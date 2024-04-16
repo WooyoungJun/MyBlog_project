@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %} MyBlog - Post {{post.id}} {% endblock %}
+
+{% block header %}
+<header class="masthead" style="background-image: url('../static/assets/img/post-bg.jpg')">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <!-- 제목 + post 저자 + 생성 날짜 -->
+                <div class="post-heading">
+                    <div id="title" name="title"><h2>{{post.title}}</h2></div>
+                    <span class="meta">
+                        <div id="author" name="author"><p>Post Author: <a href="#!">{{post.user.username}}</a></p></div>
+                        <div id="category" name="category"><p>Category: <a href="#!">{{post.category.name}}</a></p></div>
+                        <p>Post created at : {{post.date_created}}</p>
+                        {% if user.id == post.user.id %}
+                        <button class="btn btn-info" id="edit_button">
+                            <a href="{{url_for('views.post_edit', id=post.id)}}">Edit</a>
+                        </button>
+                        <button onclick="onDelete({{post.id}})" class="btn btn-danger" id="delete_button">Delete</button>
+                        {% endif %}
+                    </span>
+                    <span class="subheading"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script>
+    function onDelete(postId){
+        let confirm = window.confirm('정말 삭제하시겠습니까?');
+        if (confirm) {
+            // 확인을 클릭한 경우에만 요청 보내기
+            fetch('/post-delete/' + postId, {method:"GET"})
+            .then(response => {
+                if (response.status === 200){
+                    window.location.href = '/'
+                }
+            })
+        }
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- 본문 -->
+<article class="mb-4">
+    <div class="container px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7" id="content" name="content">
+                <p>{{ post.content }}</p>
+            </div>
+        </div>
+    </div>
+</article>
+{% endblock %}

@@ -1,0 +1,21 @@
+# Environments
+venv/
+
+# config 파일
+blog/config/production.py
+tests/test_config/production.py
+
+# test.py 파일
+test.py
+
+# sqlite3 db
+db.sqlite3
+*.db
+
+# migrations 폴더 제외
+migrations/
+
+# 컴파일된 모듈의 캐시 디렉토리 무시
+# .pyc, .pyo, .pyd 무시
+__pycache__
+*.py[cod] 

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %} MyBlog - Post {{type}} {% endblock %}
+
+{% block header %}
+<header class="masthead" style="background-image: url('../static/assets/img/post-bg.jpg')">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="site-heading">
+                    <h2>Post {{id}} {{type}}</h2>
+                    <span class="subheading"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="mb-4">
+    <div class="container px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="my-5" style="border: 1px solid black; padding: 20px;">
+                    <form id="postForm" method="POST">
+                        {{form.csrf_token}}
+                        {% for field in form if field.name != 'csrf_token'%}
+                            <div class="form-floating">
+                                {{ field(id=field.id, class="form-control" ~ (' is-invalid' if field.errors else ''), required=True,
+                                style=("font-size: 16px;" ~ ("height:500px; resize: none;" if field.name == 'content' else ""))) }}
+                                <label for="{{ field.id }}" {% if field.errors %} class="invalid-feedback" {% endif %}>{{ field.label.text }}</label>
+                                {% for error in field.errors %}
+                                    <span class="invalid-feedback" style="font-size: 16px; color:red;">{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <br />
+                        <button class="btn btn-primary text-uppercase" id="submitButton" type="submit">
+                            Post {{type}}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
