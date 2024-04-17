@@ -1,4 +1,4 @@
-# mginx Dockerfile
+# nginx Dockerfile
 
 # 베이스 이미지 선택
 FROM nginx:1.18.0
