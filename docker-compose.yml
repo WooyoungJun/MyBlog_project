@@ -1,7 +1,6 @@
 # docker-compose.yml
 
 version: "3.7"
-name: MyBlog
 
 services:
   flask_app: # 서비스 이름
