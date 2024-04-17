@@ -12,7 +12,7 @@ services:
     restart: always
     command: gunicorn -b 0.0.0.0:8888 app:app
     volumes:
-      - /flask_app/blog/db:flask_app/blog/db
+      - /flask_app/blog/db:/flask_app/blog/db
 
   nginx_server:
     # 서비스 이름
