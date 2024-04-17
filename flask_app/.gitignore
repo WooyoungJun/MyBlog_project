@@ -5,8 +5,8 @@ venv/
 blog/config/production.py
 tests/test_config/production.py
 
-# test.py 파일
-test.py
+# tests 폴더
+tests/
 
 # sqlite3 db
 db.sqlite3
