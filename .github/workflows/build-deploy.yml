@@ -1,0 +1,58 @@
+name: Build and Deploy Flask to AWS EC2
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# ------------------------- 환경 변수 설정 -------------------------
+env:
+  PROJECT_NAME: MyBlog
+  BUCKET_NAME: myblog-wooyoung-bucket
+  CODE_DEPLOY_APP_NAME: MyBlog_CodeDeploy
+  DEPLOYMENT_GROUP_NAME: MyBlog_CodeDeploy_Group
+  
+# ------------------------- 작업 설정 -------------------------
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub Repository
+      - uses: actions/checkout@v2
+
+      - name: Set Up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8.8
+
+      - name: Install dependencies
+        run: |
+          cd flask_app
+          python -m venv venv
+          . venv/bin/activate
+          pip install -r requirements.txt
+        shell: bash
+
+      - name: Make Zip File
+        run: |
+          zip -qq -r ./$GITHUB_SHA.zip .
+        shell: bash
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
+
+      - name: Code Deploy To EC2 instance
+        run: aws deploy create-deployment 
+                --application-name $CODE_DEPLOY_APP_NAME 
+                --deployment-config-name CodeDeployDefault.AllAtOnce
+                --deployment-group-name $DEPLOYMENT_GROUP_NAME 
+                --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
