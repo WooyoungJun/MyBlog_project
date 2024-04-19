@@ -1,4 +1,4 @@
-name: Build and Deploy Flask to AWS EC2
+name: Deploy to EC2
 
 on:
   push:
@@ -18,41 +18,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout GitHub Repository
-      - uses: actions/checkout@v2
-
-      - name: Set Up Python
-        uses: actions/setup-python@v2
+      - name: SSH into EC2 and deploy
+        uses: appleboy/ssh-action@master
         with:
-          python-version: 3.8.8
-
-      - name: Install dependencies
-        run: |
-          cd flask_app
-          python -m venv venv
-          . venv/bin/activate
-          pip install -r requirements.txt
-        shell: bash
-
-      - name: Make Zip File
-        run: |
-          zip -qq -r ./$GITHUB_SHA.zip .
-        shell: bash
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
-
-      - name: Upload to S3
-        run: |
-          aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
-
-      - name: Code Deploy To EC2 instance
-        run: aws deploy create-deployment 
-                --application-name $CODE_DEPLOY_APP_NAME 
-                --deployment-config-name CodeDeployDefault.AllAtOnce
-                --deployment-group-name $DEPLOYMENT_GROUP_NAME 
-                --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT }}
+          script: |
+            cd MyBlog_project
+            git pull origin main
+            chmod +x run_docker.sh
+            ./run_docker.sh
