@@ -2,11 +2,11 @@
 venv/
 
 # config 파일
-flask_app/blog/config/production.py
-flask_app/tests/test_config/production.py
+production.py
 
 # tests 폴더
 tests/
+test.py
 
 # sqlite3 db
 db.sqlite3
