@@ -13,10 +13,10 @@ class AuthTest(TestBase):
 
     def signup(self):
         return self.test_client.post('/auth/sign-up', data=dict(
-            username='XXXXX',
-            email='test@example.com',
-            password='XXXXXX',
-            password_check='XXXXXX',
+            username='11111',
+            email='test1@example.com',
+            password='123456',
+            password_check='123456',
         ))
     
     '''
@@ -25,12 +25,12 @@ class AuthTest(TestBase):
     '''
     def test_1_signup_db(self):
         user1 = get_model('user')(
-            username='XXXXX', 
+            username='11111', 
             email='test1@example.com', 
             password='123456'
         )
         user2 = get_model('user')(
-            username='XXXXO',
+            username='22222',
             email = 'test2@example.com',
             password='123456'
         )
@@ -73,8 +73,8 @@ class AuthTest(TestBase):
 
         # 3. 로그인 진행
         response = self.test_client.post('/auth/login', data=dict(
-            email='test@example.com',
-            password='XXXXXX' 
+            email='test1@example.com',
+            password='123456' 
         ), follow_redirects=True)
 
         # 4. Nav 에서 Login, Sign Up 버튼 없어야 하고, New Post, Logout 있어야 함
@@ -97,7 +97,7 @@ class AuthTest(TestBase):
         self.assertEqual(get_model('user').query.count(), 1)     # 유저 수 확인
 
         # 2. 로그인
-        user = get_model('user').query.filter_by(email='test@example.com').first()
+        user = get_model('user').query.filter_by(email='test1@example.com').first()
         login_user(user, remember=True)
 
         # 3. 로그아웃

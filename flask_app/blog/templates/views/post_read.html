@@ -18,7 +18,7 @@
                         <button class="btn btn-info" id="edit_button">
                             <a href="{{url_for('views.post_edit', post_id=post.id)}}">Edit</a>
                         </button>
-                        <button data-post-id="{{post.id}}" onclick="onDeletePost(this)" class="btn btn-danger" id="delete_button">Delete</button>
+                        <button data_post_id="{{post.id}}" onclick="onDeletePost(this)" class="btn btn-danger" id="delete_button">Delete</button>
                         {% endif %}
                     </span>
                     <span class="subheading"></span>
@@ -33,7 +33,7 @@
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
             // 확인을 클릭한 경우에만 요청 보내기
-            let postId = button.getAttribute('data-post-id');
+            let postId = button.getAttribute('data_post_id');
             fetch('/post-delete/' + postId, {method:"GET"})
             .then(response => {
                 if (response.status === 200){
@@ -46,12 +46,12 @@
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
             // 확인을 클릭한 경우에만 요청 보내기
-            let commentId = button.getAttribute('data-comment-id');
-            let postId = button.getAttribute('data-post-id');
-            fetch('/comment-delete/' + postId + '-' + commentId, {method:"GET"})
+            let commentId = button.getAttribute('data_comment_id');
+            fetch('/comment-delete/' + commentId, {method:"GET"})
             .then(response => {
+                window.location.reload();
                 if (response.status === 200){
-                    window.location.reload();
+                } else {
                 }
             })
         }
@@ -73,7 +73,7 @@
 <!--comment -->
 <section class="mb-5" style="max-width: 60%; margin:0 auto">
     <div class="card bg-light">
-        <div class="card-body" id="comment-wrapper">
+        <div class="card-body" id="commentWrapper">
             <!-- Comment form-->
             <form class="mb-4" method="post" action="{{ url_for('views.comment_create', post_id=post.id) }}"
             style="padding-bottom: 10px;">
@@ -85,53 +85,58 @@
                     </button>
                 </div>
             </form>
-            {% for comment in comments %}
-                <!-- Single comment-->
-                <div class="row border-bottom">
-                    <div class="col-md-2" style="margin:0 0; font-size: 16px; border-right:1px solid;">
-                        <p style="margin:0 0"> {{comment.user.username}}</p>
-                        <p style="margin:0 0">{{comment.date_created | datetime}}</p>
-                    </div>
-                    <div class="col-md-10" style="margin:0 0; font-size: 16px;">
-                        <div class="row">
-                            <p class="col-10" style="margin:0 0">{{comment.content}}</p>
-                            {% if current_user.id==comment.author_id %}
-                                <p class="col-2 d-flex justify-content-center align-items-center" style="margin: 6px 0px">
-                                    <button class="btn btn-secondary" style="padding: 6px;" data-bs-toggle="modal" data-bs-target="#editCommentModal{{ comment.id }}">
-                                        <i class="fa-solid fa-pencil"></i>
-                                    </button>
-                                    <button data-comment-id="{{comment.id}}" data-post-id="{{post.id}}" onclick="onDeleteComment(this)" class="btn btn-danger" style="padding: 6px;">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Modal -->
-                <div class="modal fade" id="editCommentModal{{ comment.id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="exampleModalLabel">Comment id
-                                    : {{ comment.id }} Edit</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            {% if not comments %}
+                <div id="emptyComment" style="text-align: center;">댓글이 없습니다.</div>
+            {% else %}
+                {% for comment in comments %}
+                    <div id="commentList">
+                        <!-- Single comment-->
+                        <div class="row border-bottom">
+                            <div class="col-md-2" style="margin:0 0; font-size: 16px; border-right:1px solid;">
+                                <p style="margin:0 0"> {{comment.user.username}}</p>
+                                <p style="margin:0 0">{{comment.date_created | datetime}}</p>
                             </div>
-                            <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', post_id=post.id, comment_id=comment.id) }}">
-                                {{ form.csrf_token }}
-                                <div class="modal-body">
-                                    <input type="text" class="form-control" name="content" value="{{ comment.content }}"/>
+                            <div class="col-md-10" style="margin:0 0; font-size: 16px;">
+                                <div class="row">
+                                    <p class="col-10" style="margin:0 0">{{comment.content}}</p>
+                                    {% if current_user.id==comment.author_id %}
+                                        <p id="editAndDeleteButton" class="col-2 d-flex justify-content-center align-items-center" style="margin: 6px 0px">
+                                            <button class="btn btn-secondary" style="padding: 6px;" data-bs-toggle="modal" data-bs-target="#editCommentModal{{ comment.id }}">
+                                                <i class="fa-solid fa-pencil"></i>
+                                            </button>
+                                            <button data_comment_id="{{comment.id}}" onclick="onDeleteComment(this)" class="btn btn-danger" style="padding: 6px;">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </p>
+                                    {% endif %}
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary"data-bs-dismiss="modal">Close</button>
-                                    <button type="submit" class="btn btn-primary">Edit comment</button>
+                            </div>
+                        </div>
+
+                        <!-- Modal -->
+                        <div class="modal fade" id="editCommentModal{{ comment.id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Comment Edit</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', post_id=post.id, comment_id=comment.id) }}">
+                                        {{ form.csrf_token }}
+                                        <div class="modal-body">
+                                            <input id="commentContent" type="text" class="form-control" name="content" value="{{ comment.content }}"/>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary"data-bs-dismiss="modal">Close</button>
+                                            <button type="submit" class="btn btn-primary">Edit comment</button>
+                                        </div>
+                                    </form>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            {% endif%}
         </div>
     </div>
 </section>

@@ -31,9 +31,9 @@ class PostTest(TestBase):
     # 회원가입(db에 직접 넣기) 후 로그인(login_user -> current_user 사용 가능)
     def signUpAndLogin(self, post_create_permission=False):
         user = get_model('user')(
-            username='XXXXX',
-            email='test@example.com',
-            password='XXXXXX',
+            username='11111',
+            email='test1@example.com',
+            password='123456',
             post_create_permission=post_create_permission,
         )
         db.session.add(user)
@@ -113,7 +113,7 @@ class PostTest(TestBase):
         self.assertIn('test title', source.find(id='title').text)
         self.assertIn('test content', source.find(id='content').text)
         self.assertIn('category 2', source.find(id='category').text)
-        self.assertIn('XXXXX', source.find(id='author').text)
+        self.assertIn('11111', source.find(id='author').text)
 
         # 3. 카테고리 접근 후 post 확인
         response_category_page = self.test_client.get('/posts-list/2')
@@ -121,7 +121,7 @@ class PostTest(TestBase):
         self.assertIn('category 2', source.find(id='category_wrapper').text)
         self.assertIn('test title', source.find(id='post_title').text)
         self.assertIn('총 1개', source.find(id='posts_count').text)
-        self.assertIn('XXXXX', source.find(id='post_owner_name').text)
+        self.assertIn('11111', source.find(id='post_owner_name').text)
 
     '''
     4. post 수정
@@ -160,14 +160,14 @@ class PostTest(TestBase):
         self.assertIn('test title update', source.find(id='title').text)
         self.assertIn('test content update', source.find(id='content').text)
         self.assertIn('category 1', source.find(id='category').text)
-        self.assertIn('XXXXX', source.find(id='author').text)
+        self.assertIn('11111', source.find(id='author').text)
         logout_user()
 
         # 5. 저자 X 생성 후 로그인
         user2 = get_model('user')(
-            username='XXXXO',
+            username='22222',
             email='test2@example.com',
-            password='XXXXXX',
+            password='123456',
             post_create_permission=True,
         )
         db.session.add(user2)

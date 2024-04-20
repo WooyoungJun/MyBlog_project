@@ -138,7 +138,7 @@ def posts_list(category_id):
 def post(post_id):
     form = CommentForm()
 
-    post = db.session.query(get_model('post')).options(selectinload(get_model('post').post_comments)).get(post_id)
+    post = db.session.get(get_model('post'), post_id, options=[selectinload(get_model('post').post_comments)])
     if post is None:
         flash('해당 포스트는 존재하지 않습니다.', category="error")
         return redirect(url_for('views.home'))
@@ -155,7 +155,11 @@ def post(post_id):
 def comment_create(post_id):
     form = CommentForm()
 
-    if request.method == 'POST' and form.validate_on_submit():
+    if request.method == 'GET':
+        flash('잘못된 요청입니다.', category="error")
+        return redirect(url_for('views.post', post_id=post_id))
+    
+    if form.validate_on_submit():
         comment = get_model('comment')(
             content=form.content.data,
             author_id=current_user.id,
@@ -163,6 +167,9 @@ def comment_create(post_id):
         )
         db.session.add(comment)
         db.session.commit()
+        return redirect(url_for('views.post', post_id=post_id))
+    else:
+        flash('댓글 작성 실패!', category="error")
         return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/comment-edit/<int:post_id>-<int:comment_id>', methods=['POST'])
@@ -180,7 +187,7 @@ def comment_edit(post_id, comment_id):
         return redirect(url_for('views.post', post_id=post_id))
     
     if current_user.id != comment.author_id: return abort(403)
-    
+
     if form.validate_on_submit():
         comment.content = form.content.data
         db.session.commit()
@@ -191,14 +198,14 @@ def comment_edit(post_id, comment_id):
         return redirect(url_for('views.post', post_id=post_id))
     
 
-@views.route('/comment-delete/<int:post_id>-<int:comment_id>')
+@views.route('/comment-delete/<int:comment_id>')
 @login_required
-def comment_delete(post_id, comment_id):
+def comment_delete(comment_id):
     # delete 요청 comment 가져오기
     comment = db.session.get(get_model('comment'), comment_id)
     if comment is None:
         flash('해당 댓글은 존재하지 않습니다.', 'error')
-        return redirect(url_for('views.post', post_id=post_id))
+        return jsonify(message='error'), 400
     
     # 작성자가 아니면 abort
     if current_user.id != comment.author_id: return abort(403)
