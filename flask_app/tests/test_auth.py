@@ -3,6 +3,8 @@ import sys
 # 현재 스크립트의 부모 디렉터리를 상위로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
+
 from flask_login import login_user
 from blog.models import db, get_model
 from tests.test_base import TestBase
