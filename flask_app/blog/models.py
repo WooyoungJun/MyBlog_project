@@ -41,7 +41,7 @@ class User(db.Model, UserMixin):
         self.admin_check = admin_check
 
     def __repr__(self):
-        return f'User {self.id}: {self.username}'                                  
+        return f'{self.__class__.__name__} {self.id}: {self.username}'                                  
     
 class Post(db.Model):
     __tablename__ = 'post'                                                                          # 테이블 이름 명시적 선언
@@ -69,7 +69,7 @@ class Post(db.Model):
         self.category_id = category_id
 
     def __repr__(self):
-        return f'Post {self.id}: {self.title}'
+        return f'{self.__class__.__name__} {self.id}: {self.title}'
 
 class Category(db.Model):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
@@ -77,12 +77,27 @@ class Category(db.Model):
     name = db.Column(db.String(150), unique=True)                                                   # 메뉴 이름                    
 
     def __repr__(self):
-        return f'Category {self.id}: {self.name}'
+        return f'{self.__class__.__name__} {self.id}: {self.name}'
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)                                                    # 댓글 고유 번호
+    content = db.Column(db.Text(), nullable=False)                                                  # 댓글 내용
+    date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))            # 댓글 생성 시간
+
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)  
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete='CASCADE'), nullable=False)  
+
+    user = db.relationship('User', backref=db.backref('user_comments', cascade='delete, delete-orphan'), lazy='selectin')
+    post = db.relationship('Post', backref=db.backref('post_comments', cascade='delete, delete-orphan'), lazy='selectin')
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(title={self.content})>'
     
 def get_model(arg):
     models = {
         'user': User,
         'post': Post,
         'category': Category,
+        'comment': Comment,
     }
     return models[arg]

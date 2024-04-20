@@ -26,3 +26,6 @@ class PostForm(FlaskForm):
         super(PostForm, self).__init__(*args, **kwargs)
         self.category_id.choices = [(category.id, category.name) for category in get_model('category').query.all()]
         self.author.data = current_user.username
+
+class CommentForm(FlaskForm):
+    content = TextAreaField('content', validators=[DataRequired('댓글을 작성해주세요.')])

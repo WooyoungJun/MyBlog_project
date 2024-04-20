@@ -26,6 +26,9 @@ def create_app(config):
     from .auth import auth
     app.register_blueprint(auth, url_prefix='/auth')
 
+    # jinja2 필터 등록
+    app.jinja_env.filters['datetime'] = lambda x: x.strftime('%y.%m.%d %H:%M')
+
     # login_manager 설정 코드
     login_manager = LoginManager()
     login_manager.init_app(app) # app 연결
@@ -83,5 +86,10 @@ def create_app(config):
             print('\033[31m' + "Error : username or email already exists.")
     # app에 등록
     app.cli.add_command(create_user)
+
+    # sqlalchemy 쿼리 로깅 확인용 
+    # import logging
+    # logging.basicConfig()
+    # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
     return app
