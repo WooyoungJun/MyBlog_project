@@ -5,6 +5,7 @@ venv/
 production.py
 
 # test.py 파일
+tests/
 test.py
 
 # sqlite3 db
