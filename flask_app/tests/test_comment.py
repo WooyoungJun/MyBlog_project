@@ -98,7 +98,7 @@ class CommentTest(TestBase):
         self.assertIsNotNone(modal_button)
 
         # 3. modal 들어가서 내용 확인
-        modal_content = BeautifulSoup(response.data, 'html.parser').find('div', {'class':'modal fade'})
+        modal_content = BeautifulSoup(response.data, 'html.parser').find('div', {'id':'editCommentModal1'})
         self.assertEqual('Comment Edit', modal_content.find('h5', {'class': 'modal-title'}).text.strip())  # 모달 제목에 Comment Edit 표시
         self.assertEqual('test1', modal_content.find(id='commentContent')['value'].strip() ) # 모달 내용에 댓글 내용 표시
 

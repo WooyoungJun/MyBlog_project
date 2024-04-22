@@ -55,5 +55,4 @@ def sign_up():
             db.session.commit() # 변화 적용
             flash('회원가입 완료!', category="success")
             return redirect(url_for('views.home')) # 홈으로 이동
-    else: # GET 요청 or form invalidated
-        return render_template(BASE_AUTH_DIR + 'auth.html', form=form, user=current_user, title_name="Sign Up")
+    return render_template(BASE_AUTH_DIR + 'auth.html', form=form, user=current_user, title_name="Sign Up")

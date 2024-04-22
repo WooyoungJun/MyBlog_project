@@ -176,6 +176,11 @@ def comment_create(post_id):
 @login_required
 def comment_edit(post_id, comment_id):
     form = CommentForm()
+
+    post = db.session.get(get_model('post'), post_id)
+    if post is None:
+        flash('해당 포스트는 존재하지 않습니다.', category="error")
+        return redirect(url_for('views.home'))
     
     if request.method == 'GET':
         flash('잘못된 요청입니다.', category="error")

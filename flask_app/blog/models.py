@@ -15,11 +15,16 @@ migrate = Migrate()
 # save-update = session에 변경 add 시, 연결된 모든 객체도 session에 add
 # delete = 삭제될 때만
 # delete-orphan = delete + 관계가 끊길 때도 추가 삭제
+# lazy='selectin': 주 객체를 가져오는 쿼리에 관련된 모든 객체를 가져오는 서브쿼리를 사용하여 즉시 로드
+# 실제 사용할 때는 sqlalchemy.orm.selectinload 메소드 사용 = N+1 문제 해결
 
+# ForeignKey(다른 테이블의 컬럼 이름, 삭제 옵션)
 # db.backref => 반대쪽 모델에서 이 모델로 역참조 들어올 때, 타고 들어올 속성 명
 
 # User <=> Post : 1:N 관계 -> Post(N) 쪽에 relationship 설정
 # Category <=> Post : 1:N 관계 -> Post(N) 쪽에 relationship 설정
+# Comment <=> User, Post : N:1 관계 -> Comment(N) 쪽에 relationship 설정
+
 
 # flask-login 사용하기 위해 UserMixin 상속
 class User(db.Model, UserMixin):
@@ -50,14 +55,9 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)                                                    # 본문 내용
     date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))                         # 글 작성 시간
 
-    # ForeignKey(다른 테이블의 컬럼 이름, 삭제 옵션)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_post_user', ondelete='CASCADE'), nullable=False)                
     category_id = db.Column(db.Integer, db.ForeignKey('category.id', name='fk_post_category', ondelete='CASCADE'), nullable=False)   
 
-    # 관계 설정
-    # delete-orphan 사용 시 delete도 함께 사용해야 함
-    # lazy='selectin': 주 객체를 가져오는 쿼리에 관련된 모든 객체를 가져오는 서브쿼리를 사용하여 즉시 로드
-    # 실제 사용할 때는 sqlalchemy.orm.selectinload 메소드 사용 = N+1 문제 해결
     user = db.relationship('User', backref=db.backref('user_posts', cascade='delete, delete-orphan', lazy='selectin'))    
     category = db.relationship('Category', backref=db.backref('category_posts', cascade='delete, delete-orphan', lazy='selectin')) 
 
