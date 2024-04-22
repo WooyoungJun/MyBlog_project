@@ -67,6 +67,11 @@ class MessageAdmin(AdminBase):
     # 3. content 필드를 읽기 전용으로 표시
     def on_form_prefill(self, form, id):
         form.content.render_kw = {'readonly': 'readonly'}
+    
+    # 4. 생성 시 user_id 자동 채우기
+    def on_model_change(self, form, model, is_created):
+        model.user_id = current_user.id
+        super().on_model_change(form, model, is_created)
 
 def get_all_admin_models():
     return [[UserAdmin, get_model('user')], 
