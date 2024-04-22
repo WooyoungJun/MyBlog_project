@@ -42,9 +42,9 @@
                         </a>
                         <!-- 작성자, 날짜 -->
                         <p class="post-meta">
-                            Category: <a href="{{url_for('views.posts_list', category_id=post.category.id)}}" id="post_category">{{post.category.name}}</a>
+                            Category: <a href="{{url_for('views.posts_list', category_id=post.category_id)}}" id="post_category">{{post.category.name}}</a>
                             Posted by
-                            <a href="{{url_for('views.user_posts', user_id=post.user.id)}}" id="post_owner_name">{{post.user.username}}</a>
+                            <a href="{{url_for('views.user_posts', user_id=post.author_id)}}" id="post_owner_name">{{post.user.username}}</a>
                             <br>
                             {{post.date_created | datetime}}
                         </p>

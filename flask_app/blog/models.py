@@ -16,7 +16,8 @@ migrate = Migrate()
 # delete = 삭제될 때만
 # delete-orphan = delete + 관계가 끊길 때도 추가 삭제
 # lazy='selectin': 주 객체를 가져오는 쿼리에 관련된 모든 객체를 가져오는 서브쿼리를 사용하여 즉시 로드
-# 실제 사용할 때는 sqlalchemy.orm.selectinload 메소드 사용 = N+1 문제 해결
+# lazy='dynamic': 지연로딩 설정 가능 = 쿼리 객체 반환 후 사용시 쿼리 실행됨
+# 실제 사용할 때는 lazy='dynamic'설정 후 sqlalchemy.orm.selectinload 메소드 사용 = N+1 문제 해결
 
 # ForeignKey(다른 테이블의 컬럼 이름, 삭제 옵션)
 # db.backref => 반대쪽 모델에서 이 모델로 역참조 들어올 때, 타고 들어올 속성 명
@@ -58,8 +59,8 @@ class Post(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_post_user', ondelete='CASCADE'), nullable=False)                
     category_id = db.Column(db.Integer, db.ForeignKey('category.id', name='fk_post_category', ondelete='CASCADE'), nullable=False)   
 
-    user = db.relationship('User', backref=db.backref('user_posts', cascade='delete, delete-orphan', lazy='selectin'))    
-    category = db.relationship('Category', backref=db.backref('category_posts', cascade='delete, delete-orphan', lazy='selectin')) 
+    user = db.relationship('User', backref=db.backref('user_posts', cascade='delete, delete-orphan', lazy='select'))    
+    category = db.relationship('Category', backref=db.backref('category_posts', cascade='delete, delete-orphan', lazy='select')) 
 
     def __init__(self, author_id, title='', content='', category_id=1):
         self.title = title
@@ -82,13 +83,13 @@ class Category(db.Model):
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)                                                    # 댓글 고유 번호
     content = db.Column(db.Text(), nullable=False)                                                  # 댓글 내용
-    date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))            # 댓글 생성 시간
+    date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))          # 댓글 생성 시간
 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)  
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete='CASCADE'), nullable=False)  
 
-    user = db.relationship('User', backref=db.backref('user_comments', cascade='delete, delete-orphan'), lazy='selectin')
-    post = db.relationship('Post', backref=db.backref('post_comments', cascade='delete, delete-orphan'), lazy='selectin')
+    user = db.relationship('User', backref=db.backref('user_comments', cascade='delete, delete-orphan'), lazy='select')
+    post = db.relationship('Post', backref=db.backref('post_comments', cascade='delete, delete-orphan'), lazy='select')
 
     def __repr__(self):
         return f'{self.__class__.__name__}(title={self.content})>'

@@ -2,7 +2,7 @@ from flask import Blueprint, abort, flash, jsonify, url_for, redirect, render_te
 from flask_login import current_user, login_required
 from blog.forms import CommentForm, ContactForm, PostForm
 from blog.models import db, get_model
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, load_only
 
 views = Blueprint('views', __name__)
 BASE_VIEWS_DIR = 'views/'
@@ -13,8 +13,7 @@ BASE_VIEWS_DIR = 'views/'
 @views.route("/")
 @views.route("/home")
 def home():
-    # posts = get_model('post').query.all() # N+1문제 발생
-    posts = db.session.query(get_model('post')).options(selectinload(get_model('post').user), selectinload(get_model('post').category)).all() # 쿼리 3번 실행
+    posts = db.session.query(get_model('post')).options(selectinload(get_model('post').user), selectinload(get_model('post').category)).all() 
     return render_template(BASE_VIEWS_DIR + "posts_list.html", 
         user=current_user, 
         posts=posts, 
@@ -22,20 +21,40 @@ def home():
         category_name='all',
     )
 
-@views.route("/user_posts/<int:user_id>")
-def user_posts(user_id):
-    # posts = get_model('post').query.all() # N+1문제 발생
-    selected_user = db.session.get(get_model('user'), user_id, options=[selectinload(get_model('user').user_posts)])
+@views.route("/posts-list/<int:category_id>")
+def posts_list(category_id):
+    category_posts = db.session.query(get_model('post')).filter_by(category_id=category_id).options(selectinload(get_model('post').user)).all() 
+    if category_posts is None:
+        flash('해당 카테고리는 존재하지 않습니다.', category="error")
+        return redirect(url_for('views.category'))
+    
     return render_template(BASE_VIEWS_DIR + "posts_list.html", 
         user=current_user, 
-        selected_user=selected_user,
-        posts=selected_user.user_posts, 
-        type = 'user_posts',
-        category_name='all'
+        posts=category_posts, 
+        type = 'category_posts',
+        category_name=category_posts[0].category.name,
     )
 
-@views.route("/about-me", methods=['GET', 'POST'])
+@views.route("/user_posts/<int:user_id>")
+def user_posts(user_id):
+    user_posts = db.session.query(get_model('post')).filter_by(author_id=user_id).options(selectinload(get_model('post').category), selectinload(get_model('post').user)).all() 
+    if user_posts is None:
+        flash('해당 유저가 작성한 글이 존재하지 않습니다.', category="error")
+        return redirect(url_for('views.home'))
+    
+    return render_template(BASE_VIEWS_DIR + "posts_list.html", 
+        user=current_user, 
+        selected_user=user_posts[0].user,
+        posts=user_posts, 
+        type = 'user_posts',
+    )
+
+@views.route("/about-me")
 def about_me():
+    return render_template(BASE_VIEWS_DIR + "about_me.html", user=current_user)
+    
+@views.route("/contact", methods=['GET', 'POST'])
+def contact():
     form = ContactForm()
 
     if request.method == 'POST' and form.validate_on_submit():
@@ -46,22 +65,40 @@ def about_me():
         db.session.add(message)
         db.session.commit()
         flash('메세지 전송이 완료되었습니다.', category="success")
-        # 폼 초기화
-        form.content.data = ''
-        return render_template(BASE_VIEWS_DIR + "about_me.html", 
-            user=current_user,
-            form=form,
-        )
-    else:
-        return render_template(BASE_VIEWS_DIR + "about_me.html", 
-            user=current_user,
-            form=form,
-        )
+        form.content.data = ''  # 폼 초기화
 
+    return render_template(BASE_VIEWS_DIR + "contact.html", 
+        user=current_user,
+        form=form,
+    )
+
+@views.route('/mypage')
+def mypage():
+    return render_template(BASE_VIEWS_DIR + "mypage.html", user=current_user)
+    
 @views.route('/category')
 def category():
-    categories = get_model('category').query.all()
+    categories = db.session.query(get_model('category')).all()
     return render_template(BASE_VIEWS_DIR + "category.html", user=current_user, categories=categories)
+
+# 해당하는 id의 포스트를 보여줌
+@views.route('/post/<int:post_id>')
+def post(post_id):
+    form = CommentForm()
+
+    post = db.session.get(get_model('post'), post_id)
+    if post is None:
+        flash('해당 포스트는 존재하지 않습니다.', category="error")
+        return redirect(url_for('views.home'))
+    
+    post_comments = db.session.query(get_model('comment')).filter_by(post_id=post_id).options(selectinload(get_model('comment').user)).all()
+    
+    return render_template(BASE_VIEWS_DIR + "post_read.html", 
+        user=current_user, 
+        post=post,
+        form=form,
+        comments=post_comments,
+    )
 
 @views.route('/post-create', methods=['GET', 'POST'])
 @login_required
@@ -147,38 +184,6 @@ def post_delete(post_id):
     db.session.commit()
     flash('게시물이 성공적으로 삭제되었습니다.', 'success')
     return jsonify(message='success'), 200
-
-@views.route("/posts-list/<int:category_id>")
-def posts_list(category_id):
-    category = db.session.get(get_model('category'), category_id)
-    if category is None:
-        flash('해당 카테고리는 존재하지 않습니다.', category="error")
-        return redirect(url_for('views.category'))
-    
-    posts = db.session.query(get_model('post')).options(selectinload(get_model('post').user)).filter_by(category_id=category_id).all() # 쿼리 3번 실행
-    return render_template(BASE_VIEWS_DIR + "posts_list.html", 
-        user=current_user, 
-        posts=posts, 
-        type = 'category_posts',
-        category_name=category.name,
-    )
-
-# 해당하는 id의 포스트를 보여줌
-@views.route('/post/<int:post_id>')
-def post(post_id):
-    form = CommentForm()
-
-    post = db.session.get(get_model('post'), post_id, options=[selectinload(get_model('post').post_comments)])
-    if post is None:
-        flash('해당 포스트는 존재하지 않습니다.', category="error")
-        return redirect(url_for('views.home'))
-    
-    return render_template(BASE_VIEWS_DIR + "post_read.html", 
-        user=current_user, 
-        post=post,
-        form=form,
-        comments=post.post_comments,
-    )
 
 @views.route('/comment-create/<int:post_id>', methods=['POST'])
 @login_required

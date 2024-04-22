@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %} MyBlog - About Me {% endblock %}
+{% block title %} MyBlog - MyPage {% endblock %}
 
 {% block header %}
 <header class="masthead" style="background-image: url('../static/assets/img/about-bg.jpg')">
@@ -8,8 +8,7 @@
         <div class="row gx-4 gx-lg-5 justify-content-center">
             <div class="col-md-10 col-lg-8 col-xl-7">
                 <div class="site-heading">
-                    <h2>About Me</h2>
-                    <span class="subheading">Let me introduce myself...</span>
+                    <h2>Current User: {{user.username}}</h2>
                 </div>
             </div>
         </div>
@@ -22,9 +21,10 @@
     <div class="row">
         <div class="col mx-auto">
             <p class="text">
-                <b>Name:</b> Jun Woo Young <br>
-                <b>Email:</b> dndud19999@gmail.com <br>
-                <b>github:</b> <a href="https://github.com/WooyoungJun">https://github.com/WooyoungJun</a><br><br>
+                <b>Name:</b> {{user.username}} <br>
+                <b>Email:</b> {{user.email}} <br>
+                <b>작성한 게시글 개수:</b> {{user.user_posts.all() | length}}<br>
+                <b>작성한 댓글 개수:</b> {{user.user_comments | length}}<br>
             </p>
         </div>
     </div>
