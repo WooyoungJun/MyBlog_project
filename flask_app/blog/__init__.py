@@ -88,9 +88,9 @@ def create_app(config):
     app.cli.add_command(create_user)
 
     # sqlalchemy 쿼리 로깅 확인용 
-    import logging
-    logging.basicConfig()
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+    # import logging
+    # logging.basicConfig()
+    # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
     with app.app_context():
         # db.Model 상속한 모든 클래스 추적해서 테이블 생성
