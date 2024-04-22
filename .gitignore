@@ -4,7 +4,7 @@ venv/
 # config 파일
 production.py
 
-# test.py 파일
+# tests 폴더
 tests/
 test.py
 
