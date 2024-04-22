@@ -23,7 +23,7 @@
             <p class="text">
                 <b>Name:</b> {{user.username}} <br>
                 <b>Email:</b> {{user.email}} <br>
-                <b>작성한 게시글 개수:</b> {{user.user_posts.all() | length}}<br>
+                <b>작성한 게시글 개수:</b> {{user.user_posts | length}}<br>
                 <b>작성한 댓글 개수:</b> {{user.user_comments | length}}<br>
             </p>
         </div>
