@@ -1,8 +1,6 @@
 name: Deploy to EC2
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 # ------------------------- 작업 설정 -------------------------
