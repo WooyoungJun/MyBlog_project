@@ -29,3 +29,13 @@ class PostForm(FlaskForm):
 
 class CommentForm(FlaskForm):
     content = TextAreaField('content', validators=[DataRequired('댓글을 작성해주세요.')])
+
+class ContactForm(FlaskForm):
+    name = StringField('name', render_kw={'readonly': True})
+    email = EmailField('email', render_kw={'readonly': True})
+    content = TextAreaField('content', validators=[DataRequired('내용을 입력해주세요.')])
+
+    def __init__(self, *args, **kwargs):
+        super(ContactForm, self).__init__(*args, **kwargs)
+        self.name.data = current_user.username
+        self.email.data = current_user.email

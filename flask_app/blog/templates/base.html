@@ -38,7 +38,6 @@
 
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.home')}}">Home</a></li>
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.about_me')}}">About Me</a></li>
-                        <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.contact')}}">Contact</a></li>
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.category')}}">Category</a></li>
 
                         <!-- 로그인 상태 X일 때 -->
@@ -47,8 +46,8 @@
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.sign_up')}}">Sign Up</a></li>
                         {% else %}
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.post_create')}}">New Post</a></li>
+                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="#!">current_user : {{user.username}}</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" style="color:red" href="{{url_for('auth.logout')}}">Logout</a></li>
-                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" style="color:blue" href="#!">current_user : {{user.username}}</a></li>
                         {% endif %} 
 
                     </ul>

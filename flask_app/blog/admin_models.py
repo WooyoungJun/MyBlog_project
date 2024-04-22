@@ -2,7 +2,7 @@ from flask import abort
 from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user
 from werkzeug.security import generate_password_hash
-from wtforms import BooleanField
+from wtforms import BooleanField, TextAreaField
 from blog.forms import SignUpForm, PostForm
 from blog.models import get_model
 
@@ -57,5 +57,20 @@ class CommentAdmin(AdminBase):
     # 2. 폼 표시 X 열 설정
     form_excluded_columns = {'date_created'} 
 
+class MessageAdmin(AdminBase):
+    # 1. 표시 할 열 설정
+    column_list = ('id', 'content', 'user_id') 
+
+    # 2. 폼 표시 X 열 설정
+    form_excluded_columns = {'user_id', 'user'} 
+
+    # 3. content 필드를 읽기 전용으로 표시
+    def on_form_prefill(self, form, id):
+        form.content.render_kw = {'readonly': 'readonly'}
+
 def get_all_admin_models():
-    return [[UserAdmin, get_model('user')], [PostAdmin, get_model('post')], [CategoryAdmin, get_model('category')], [CommentAdmin, get_model('comment')]]
+    return [[UserAdmin, get_model('user')], 
+            [PostAdmin, get_model('post')], 
+            [CategoryAdmin, get_model('category')], 
+            [CommentAdmin, get_model('comment')],
+            [MessageAdmin, get_model('message')]]

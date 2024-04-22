@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, flash, jsonify, url_for, redirect, render_template, request
 from flask_login import current_user, login_required
-from blog.forms import CommentForm, PostForm
+from blog.forms import CommentForm, ContactForm, PostForm
 from blog.models import db, get_model
 from sqlalchemy.orm import selectinload
 
@@ -18,16 +18,45 @@ def home():
     return render_template(BASE_VIEWS_DIR + "posts_list.html", 
         user=current_user, 
         posts=posts, 
+        type = 'home',
+        category_name='all',
+    )
+
+@views.route("/user_posts/<int:user_id>")
+def user_posts(user_id):
+    # posts = get_model('post').query.all() # N+1문제 발생
+    selected_user = db.session.get(get_model('user'), user_id, options=[selectinload(get_model('user').user_posts)])
+    return render_template(BASE_VIEWS_DIR + "posts_list.html", 
+        user=current_user, 
+        selected_user=selected_user,
+        posts=selected_user.user_posts, 
+        type = 'user_posts',
         category_name='all'
     )
 
-@views.route("/about-me")
+@views.route("/about-me", methods=['GET', 'POST'])
 def about_me():
-    return render_template(BASE_VIEWS_DIR + "about_me.html", user=current_user)
+    form = ContactForm()
 
-@views.route('/contact')
-def contact():
-    return render_template(BASE_VIEWS_DIR + "contact.html", user=current_user)
+    if request.method == 'POST' and form.validate_on_submit():
+        message = get_model('message')(
+            content=form.content.data,
+            user_id=current_user.id,
+        )
+        db.session.add(message)
+        db.session.commit()
+        flash('메세지 전송이 완료되었습니다.', category="success")
+        # 폼 초기화
+        form.content.data = ''
+        return render_template(BASE_VIEWS_DIR + "about_me.html", 
+            user=current_user,
+            form=form,
+        )
+    else:
+        return render_template(BASE_VIEWS_DIR + "about_me.html", 
+            user=current_user,
+            form=form,
+        )
 
 @views.route('/category')
 def category():
@@ -130,6 +159,7 @@ def posts_list(category_id):
     return render_template(BASE_VIEWS_DIR + "posts_list.html", 
         user=current_user, 
         posts=posts, 
+        type = 'category_posts',
         category_name=category.name,
     )
 

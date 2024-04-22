@@ -92,12 +92,21 @@ class Comment(db.Model):
 
     def __repr__(self):
         return f'{self.__class__.__name__}(title={self.content})>'
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
     
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+
+    user = db.relationship('User', backref=db.backref('user_messages', cascade='delete, delete-orphan'), lazy='selectin')
+
 def get_model(arg):
     models = {
         'user': User,
         'post': Post,
         'category': Category,
         'comment': Comment,
+        'message': Message
     }
     return models[arg]
