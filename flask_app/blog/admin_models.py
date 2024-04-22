@@ -54,5 +54,8 @@ class CommentAdmin(AdminBase):
     # 1. 표시 할 열 설정
     column_list = ('id', 'content', 'date_created', 'author_id', 'post_id')
 
+    # 2. 폼 표시 X 열 설정
+    form_excluded_columns = {'date_created'} 
+
 def get_all_admin_models():
     return [[UserAdmin, get_model('user')], [PostAdmin, get_model('post')], [CategoryAdmin, get_model('category')], [CommentAdmin, get_model('comment')]]
