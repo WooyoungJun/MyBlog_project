@@ -72,8 +72,8 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)                                                    # 본문 내용
     date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))                         # 글 작성 시간
 
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)                
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)   
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_post_user'), nullable=False)                
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id', name='fk_post_category'), nullable=False)   
 
     user = db.relationship('User', back_populates='user_posts')                 
     category = db.relationship('Category', back_populates='category_posts')    
@@ -107,8 +107,8 @@ class Comment(db.Model):
     content = db.Column(db.Text(), nullable=False)                                                  # 댓글 내용
     date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))          # 댓글 생성 시간
 
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)  
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_comment_user'), nullable=False)  
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_comment_post'), nullable=False)  
 
     user = db.relationship('User', back_populates="user_comments")
     post = db.relationship('Post', back_populates='post_comments')
@@ -120,7 +120,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_message_user'), nullable=False)
 
     user = db.relationship('User', back_populates='user_messages')
 
