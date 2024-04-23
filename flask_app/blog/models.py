@@ -72,8 +72,8 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)                                                    # 본문 내용
     date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))                         # 글 작성 시간
 
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_post_user', ondelete='CASCADE'), nullable=False)                
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id', name='fk_post_category', ondelete='CASCADE'), nullable=False)   
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)                
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)   
 
     user = db.relationship('User', back_populates='user_posts')                 
     category = db.relationship('Category', back_populates='category_posts')    
@@ -107,8 +107,8 @@ class Comment(db.Model):
     content = db.Column(db.Text(), nullable=False)                                                  # 댓글 내용
     date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))          # 댓글 생성 시간
 
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)  
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete='CASCADE'), nullable=False)  
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)  
 
     user = db.relationship('User', back_populates="user_comments")
     post = db.relationship('Post', back_populates='post_comments')
@@ -120,7 +120,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     user = db.relationship('User', back_populates='user_messages')
 
@@ -138,17 +138,22 @@ def get_model(arg):
 def after_insert_and_delete(session, flush_context, instances):
     for obj in session.new | session.deleted:
         if isinstance(obj, get_model('comment')):
-            post = db.session.get(get_model('post'), obj.post_id)
-            post.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(post_id=obj.post_id).scalar()
-
-            user = db.session.get(get_model('user'), obj.author_id)
-            user.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(author_id=obj.author_id).scalar()
-            if obj in session.new:      # 추가
-                post.comments_count += 1
-                user.comments_count += 1
-            else:                       # 삭제
-                post.comments_count -= 1
-                user.comments_count -= 1
+            if obj.post_id in [x.id for x in session.deleted if isinstance(x, get_model('post'))]:
+                # post 삭제 -> comment 삭제인 경우
+                user = db.session.get(get_model('user'), obj.author_id)
+                post_user_comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(author_id=obj.author_id, post_id=obj.post_id).scalar()
+                user.comments_count -= post_user_comments_count
+            else:
+                post = db.session.get(get_model('post'), obj.post_id)
+                post.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(post_id=obj.post_id).scalar()
+                user = db.session.get(get_model('user'), obj.author_id)
+                user.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(author_id=obj.author_id).scalar()
+                if obj in session.new:      # 추가
+                    post.comments_count += 1
+                    user.comments_count += 1
+                else:                       # 삭제
+                    post.comments_count -= 1
+                    user.comments_count -= 1
 
         elif isinstance(obj, get_model('post')):
             user = db.session.get(get_model('user'), obj.author_id)

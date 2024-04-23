@@ -15,6 +15,7 @@ BASE_VIEWS_DIR = 'views/'
 @views.route("/")
 @views.route("/home")
 def home():
+    # 쿼리 최대 4번 = posts 3번 + user 1번
     posts = db.session.query(get_model('post')).options(selectinload(get_model('post').user), selectinload(get_model('post').category)).all() 
     return render_template(BASE_VIEWS_DIR + "posts_list.html", 
         user=current_user, 
@@ -25,11 +26,13 @@ def home():
 
 @views.route('/category')
 def category():
+    # 쿼리 최대 2번 = category 1번 + user 1번
     categories = db.session.query(get_model('category')).all()
     return render_template(BASE_VIEWS_DIR + "category.html", user=current_user, categories=categories)
 
 @views.route("/posts-list/<int:category_id>")
 def posts_list(category_id):
+    # 쿼리 최대 4번 = selected_category 1번 + category_posts 2번 + user 1번
     selected_category = db.session.get(get_model('category'), category_id)
     category_posts = db.session.query(get_model('post')).filter_by(category_id=category_id).options(selectinload(get_model('post').user)).all() 
     if category_posts is None:
@@ -45,6 +48,7 @@ def posts_list(category_id):
 
 @views.route("/user_posts/<int:user_id>")
 def user_posts(user_id):
+    # 쿼리 최대 4번 = selected_user 1번 + user_posts 2번 + user 1번
     selected_user = db.session.get(get_model('user'), user_id)
     user_posts = db.session.query(get_model('post')).filter_by(author_id=user_id).options(selectinload(get_model('post').category)).all() 
     if user_posts is None:
@@ -64,6 +68,7 @@ def about_me():
     return render_template(BASE_VIEWS_DIR + "about_me.html", user=current_user)
     
 @views.route("/contact", methods=['GET', 'POST'])
+@login_required
 def contact():
     form = ContactForm()
 
@@ -75,7 +80,7 @@ def contact():
         db.session.add(message)
         db.session.commit()
         flash('메세지 전송이 완료되었습니다.', category="success")
-        form.content.data = ''  # 폼 초기화
+        form.content.data = ''
 
     return render_template(BASE_VIEWS_DIR + "contact.html", 
         user=current_user,
@@ -83,6 +88,7 @@ def contact():
     )
 
 @views.route('/mypage')
+@login_required
 def mypage():
     return render_template(BASE_VIEWS_DIR + "mypage.html", user=current_user)
     
@@ -91,6 +97,7 @@ def mypage():
 def post(post_id):
     form = CommentForm()
 
+    # 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     post = db.session.get(get_model('post'), post_id, options=[selectinload(get_model('post').user), selectinload(get_model('post').category)])
     if post is None:
         flash('해당 포스트는 존재하지 않습니다.', category="error")
@@ -108,7 +115,9 @@ def post(post_id):
 @views.route('/post-create', methods=['GET', 'POST'])
 @login_required
 def post_create():
-    # 글 작성 권한 없으면 abort
+    # GET 요청 = 쿼리 최대 2번 = user 1번 + category 1번  
+    # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
+    # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     if current_user.post_create_permission == False: return abort(403)
 
     form = PostForm()
@@ -133,7 +142,9 @@ def post_create():
 @views.route('/post-edit/<int:post_id>', methods=['GET', 'POST'])
 @login_required
 def post_edit(post_id):
-    # edit 요청 post 가져오기
+    # GET 요청 = 쿼리 최대 3번 = user 1번 + post 1번 + category 1번
+    # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
+    # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     post = db.session.get(get_model('post'), post_id)
     if post is None:
         flash('게시물을 찾을 수 없습니다.', 'error')
@@ -161,7 +172,7 @@ def post_edit(post_id):
         post.title = form.title.data
         post.content = form.content.data
         post.category_id = form.category_id.data
-        db.session.commit() # 바로 commit = update
+        db.session.commit() 
         flash('Post 수정 완료!', category="success")
         return redirect(url_for('views.post', post_id=post_id))
     else:
@@ -176,7 +187,9 @@ def post_edit(post_id):
 @views.route('/post-delete/<int:post_id>')
 @login_required
 def post_delete(post_id):
-    # delete 요청 post 가져오기
+    # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
+    # + comments 관련 user update N번
+    # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     post = db.session.get(get_model('post'), post_id)
     if post is None:
         flash('게시물을 찾을 수 없습니다.', 'error')
@@ -193,7 +206,9 @@ def post_delete(post_id):
 # ------------------------------------------------------------ comment 관련 기능들 ------------------------------------------------------------
 @views.route('/comment-create/<int:post_id>', methods=['POST'])
 @login_required
-def comment_create(post_id):
+def comment_create(post_id): 
+    # POST 요청 = 쿼리 최대 4번 = user 1번 + comment 추가(post조회 + post_comments + user_comments update 3번)
+    # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     form = CommentForm()
 
     if request.method == 'GET':
@@ -217,6 +232,8 @@ def comment_create(post_id):
 @views.route('/comment-edit/<int:comment_id>', methods=['POST'])
 @login_required
 def comment_edit(comment_id):
+    # POST 요청 = 쿼리 최대 4번 = user 1번 + comment update 1번
+    # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     form = CommentForm()
     
     if request.method == 'GET':
@@ -243,7 +260,8 @@ def comment_edit(comment_id):
 @views.route('/comment-delete/<int:comment_id>')
 @login_required
 def comment_delete(comment_id):
-    # delete 요청 comment 가져오기
+    # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
+    # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     comment = db.session.get(get_model('comment'), comment_id)
     if comment is None:
         flash('해당 댓글은 존재하지 않습니다.', 'error')

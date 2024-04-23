@@ -19,7 +19,7 @@
                         <button class="btn btn-info" id="edit_button">
                             <a href="{{url_for('views.post_edit', post_id=post.id)}}">Edit</a>
                         </button>
-                        <button data_post_id="{{post.id}}" onclick="onDeletePost(this)" class="btn btn-danger" id="delete_button">Delete</button>
+                        <button onclick="onDeletePost()" class="btn btn-danger" id="delete_button">Delete</button>
                         {% endif %}
                     </span>
                     <span class="subheading"></span>
@@ -30,11 +30,11 @@
 </header>
 
 <script>
-    function onDeletePost(button){
+    function onDeletePost(){
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
             // 확인을 클릭한 경우에만 요청 보내기
-            let postId = button.getAttribute('data_post_id');
+            let postId = document.getElementById('post_data').getAttribute('data_post_id');
             fetch('/post-delete/' + postId, {method:"GET"})
             .then(response => {
                 if (response.status === 200){
@@ -61,6 +61,8 @@
 {% endblock %}
 
 {% block content %}
+<!-- data 태그 -->
+<div id="post_data" data_post_id="{{post.id}}"></div>
 <!-- 본문 -->
 <article class="mb-4">
     <div class="container px-4 px-lg-5">
@@ -94,7 +96,7 @@
                     <div id="commentList">
                         <!-- Single comment-->
                         <div class="row border-bottom">
-                            <div class="col-3" style="margin:0 0; font-size: 12px; border-right:1px solid;">
+                            <div class="col-3" style="margin:0 0; font-size: 14px; border-right:1px solid;">
                                 <p style="margin:0 0"> {{comment.user.username}}</p>
                                 <p style="margin:0 0">{{comment.date_created | datetime}}</p>
                             </div>

@@ -58,6 +58,7 @@ class PostAdmin(AdminBase):
     # 3. 현재 사용자 아이디 모델에 추가하기
     def on_model_change(self, form, model, is_created):
         model.author_id = current_user.id
+        model.comments_count = model.post_comments.count()
         super().on_model_change(form, model, is_created)
 
 class CategoryAdmin(AdminBase):
