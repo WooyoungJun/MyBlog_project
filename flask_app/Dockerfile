@@ -4,7 +4,6 @@
 FROM python:3.8.8
 
 # 작업 디렉토리 설정
-RUN mkdir /flask_app
 WORKDIR /flask_app
 
 # 패키지 설치
