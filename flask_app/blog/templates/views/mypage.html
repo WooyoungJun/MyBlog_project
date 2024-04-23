@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/views/mypage.html -->
 {% extends "base.html" %}
 
 {% block title %} MyBlog - MyPage {% endblock %}
@@ -23,8 +24,8 @@
             <p class="text">
                 <b>Name:</b> {{user.username}} <br>
                 <b>Email:</b> {{user.email}} <br>
-                <b>작성한 게시글 개수:</b> {{user.user_posts | length}}<br>
-                <b>작성한 댓글 개수:</b> {{user.user_comments | length}}<br>
+                <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
+                <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
             </p>
         </div>
     </div>

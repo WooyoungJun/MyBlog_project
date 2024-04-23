@@ -103,7 +103,7 @@ class CommentTest(TestBase):
         self.assertEqual('test1', modal_content.find(id='commentContent')['value'].strip() ) # 모달 내용에 댓글 내용 표시
 
         # 4. 수정 요청 후 확인
-        self.test_client.post('/comment-edit/1-1', data=dict(content="after_edit"))
+        self.test_client.post('/comment-edit/1', data=dict(content="after_edit"))
         response = self.test_client.get('post/1')
         post_response = BeautifulSoup(response.data, 'html.parser')
         comment = post_response.find(id='commentList')
@@ -114,7 +114,7 @@ class CommentTest(TestBase):
         # 5. 다른 유저가 수정 요청 후 확인
         logout_user() # 로그아웃
         login_user(self.user2, remember=True) # 다른 유저로 로그인
-        self.test_client.post('/comment-edit/1-1', data=dict(content="hacking_request"))
+        self.test_client.post('/comment-edit/1', data=dict(content="hacking_request"))
         response = self.test_client.get('post/1')
         post_response = BeautifulSoup(response.data, 'html.parser')
         comment = post_response.find(id='commentList')

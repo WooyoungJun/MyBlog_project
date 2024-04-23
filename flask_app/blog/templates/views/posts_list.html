@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/views/posts_list.html -->
 {% extends "base.html" %}
 
 {% block title %} 
@@ -47,6 +48,7 @@
                             <a href="{{url_for('views.user_posts', user_id=post.author_id)}}" id="post_owner_name">{{post.user.username}}</a>
                             <br>
                             {{post.date_created | datetime}}
+                            comments: {{post.comments_count}}
                         </p>
                     </div>
                     <!-- Divider-->

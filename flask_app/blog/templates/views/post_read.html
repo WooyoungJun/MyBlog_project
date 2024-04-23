@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/views/post_read.html -->
 {% extends "base.html" %}
 
 {% block title %} MyBlog - Post {{post.id}} {% endblock %}
@@ -125,7 +126,7 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Comment Edit</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', post_id=post.id, comment_id=comment.id) }}">
+                                    <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', comment_id=comment.id) }}">
                                         {{ form.csrf_token }}
                                         <div class="modal-body">
                                             <input id="commentContent" type="text" class="form-control" name="content" value="{{ comment.content }}"/>
