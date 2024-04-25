@@ -4,7 +4,7 @@ from flask_admin import Admin
 from blog.admin_models import get_all_admin_models
 from .models import db, migrate, get_model
 
-def create_app(config, type):
+def create_app(config, mode):
     '''
     플라스크의 팩토리 지정함수(app 객체 생성 함수)
     app 객체를 생성할 때 전역으로 접근하지 못하게 함 
@@ -12,7 +12,8 @@ def create_app(config, type):
     '''
     app = Flask(__name__)
     app.config.from_object(config) # 환경변수 설정 코드
-    app.secret_key = config.SECRET_KEYS[f'{type}_SECRET_KEY']
+    app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
+    app.config.mode = mode.lower()
     db.init_app(app)
     migrate.init_app(app, db)
     with app.app_context():
