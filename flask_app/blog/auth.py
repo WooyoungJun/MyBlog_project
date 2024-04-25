@@ -81,7 +81,7 @@ def sign_up():
 @auth.route('/google/<string:type>')
 def google_auth_page(type):
     authorize_uri = current_app.config['GOOGLE_AUTH_URI']
-    redirect_uri = current_app.config['GOOGLE_REDIRECT_URIS'][f'{type}_{current_app.config['mode']}']
+    redirect_uri = current_app.config['GOOGLE_REDIRECT_URIS'][f'{type}_{current_app.config["mode"]}']
     client_id = current_app.config['GOOGLE_CLIENT_ID']
     scope = current_app.config['GOOGLE_SCOPE']
     response_type = 'code'

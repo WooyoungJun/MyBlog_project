@@ -13,7 +13,7 @@ def create_app(config, mode):
     app = Flask(__name__)
     app.config.from_object(config) # 환경변수 설정 코드
     app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
-    app.config.mode = mode.lower()
+    app.config['mode'] = mode.lower()
     db.init_app(app)
     migrate.init_app(app, db)
     with app.app_context():
