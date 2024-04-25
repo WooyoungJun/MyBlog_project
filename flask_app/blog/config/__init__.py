@@ -11,16 +11,18 @@ class Config():
     WTF_CSRF_ENABLED = True
 
     FLASK_ADMIN_SWATCH = 'darkly' # 테마 설정
-
-    # 개발 모드 = SSL 인증서 등의 보안 통신을 허용
-    AUTHLIB_INSECURE_TRANSPORT=True
     
     from .development import DEVELOPMENT_SECRET_KEY
-    from .production import PRODUCTION_SECRET_KEY
+    from .production import PRODUCTION_SECRET_KEY, MAIL_PASSWORD
     SECRET_KEYS = {
         'DEVELOPMENT_SECRET_KEY': DEVELOPMENT_SECRET_KEY,
         'PRODUCTION_SECRET_KEY': PRODUCTION_SECRET_KEY
     }
+    
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_USERNAME = 'otter4752@gmail.com'
+    MAIL_PASSWORD = MAIL_PASSWORD
+    MAIL_PORT = 587
 
     '''
         oauth google client 환경 변수
