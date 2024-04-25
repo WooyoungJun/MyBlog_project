@@ -100,7 +100,7 @@ def callback_google(type):
     token_uri = current_app.config.get('GOOGLE_TOKEN_URI')
     client_id = current_app.config.get('GOOGLE_CLIENT_ID')
     client_secret = current_app.config.get('GOOGLE_CLIENT_SECRET')
-    redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URIS')[f'{type}_{current_app.config['mode']}']
+    redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URIS')[f'{type}_{current_app.config["mode"]}']
     grant_type = 'authorization_code'
 
     access_token = requests.post(token_uri, data=dict(
