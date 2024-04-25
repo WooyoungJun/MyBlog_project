@@ -1,0 +1,32 @@
+<!-- flask_app/blog/templates/views/mypage.html -->
+{% extends "base.html" %}
+
+{% block title %} MyBlog - Mail Check {% endblock %}
+
+{% block header %}
+<header class="masthead" style="background-image: url('../static/assets/img/about-bg.jpg')">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="site-heading">
+                    <h2>Current User: {{user.username}}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<section class="about-section text-center" style="margin: 24px;">
+    <div class="row">
+        <div class="col mx-auto">
+            <p class="text">
+                <b>Name:</b> {{user.username}} <br>
+                <b>Email:</b> {{user.email}} <br>
+                <textarea></textarea>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

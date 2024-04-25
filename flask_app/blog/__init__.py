@@ -2,7 +2,7 @@ from flask import Flask, redirect, url_for, flash
 from flask_login import LoginManager
 from flask_admin import Admin
 from blog.admin_models import get_all_admin_models
-from .models import db, migrate, get_model
+from .models import get_model, db, migrate
 
 def create_app(config, mode):
     '''

@@ -1,22 +1,46 @@
+import smtplib
 import requests
 import secrets
-from functools import wraps
+import time
+from random import randint
+from email.mime.text import MIMEText
 from urllib.parse import urlencode
-from flask import Blueprint, redirect, render_template, flash, url_for, current_app, request
+from flask import Blueprint, abort, jsonify, redirect, render_template, flash, session, url_for, current_app, request
 from flask_login import login_required, login_user, logout_user, current_user
+from .utils import logout_required
 from .forms import LoginForm, SignUpForm
 from .models import get_model
 
 auth = Blueprint('auth', __name__)
 BASE_AUTH_DIR = 'auth/'
 
-def logout_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if current_user.is_authenticated:
-            return redirect(url_for('views.home'))
-        return f(*args, **kwargs)
-    return decorated_function
+@auth.route('/get_mail_authorized', methods=['POST'])
+def get_mail_authorized():
+    if request.method == 'GET': return abort(403)
+
+    try:
+        email = request.form.get('email')
+        smtp = smtplib.SMTP(current_app.config['MAIL_SERVER'], 587)
+        smtp.starttls() # TLS 암호화 보안 연결 설정
+        smtp.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
+
+        otp = str(randint(100000, 999999))
+        msg = MIMEText(f'MyBlog 회원가입 \n인증번호를 입력하여 이메일 인증을 완료해 주세요.\n인증번호 :{otp}')
+        msg['Subject'] = '[MyBlog 이메일 인증]'
+        smtp.sendmail(current_app.config['MAIL_USERNAME'], email, msg.as_string())
+        flash('메세지 전송 완료', category="success")
+
+        session[f'otp_{email}'] = otp  # 세션에 인증번호 저장
+        session[f'time_{email}'] = int(time.time())  # 인증번호 생성 시간 저장
+        smtp.quit()
+        return redirect(url_for('auth.mail_check', email=email))
+    except Exception as e:
+        return jsonify({'status': 'fail', 'response':jsonify(e)})
+
+@auth.route('/mail_check/<string:email>')
+def mail_check(email):
+    if f'otp_{email}' not in session: return abort(403)
+    return render_template(BASE_AUTH_DIR + 'mail_check.html', user=current_user)
 
 @auth.route('/login', methods=['GET', 'POST'])
 @logout_required
