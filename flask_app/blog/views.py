@@ -2,7 +2,7 @@ from flask import Blueprint, abort, flash, jsonify, url_for, redirect, render_te
 from flask_login import current_user, login_required
 from blog.forms import CommentForm, ContactForm, PostForm
 from blog.models import db, get_model
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 
 views = Blueprint('views', __name__)
 BASE_VIEWS_DIR = 'views/'
@@ -28,7 +28,10 @@ def home():
 def category():
     # 쿼리 최대 2번 = category 1번 + user 1번
     categories = db.session.query(get_model('category')).all()
-    return render_template(BASE_VIEWS_DIR + "category.html", user=current_user, categories=categories)
+    return render_template(BASE_VIEWS_DIR + "category.html", 
+        user=current_user, 
+        categories=categories,
+    )
 
 @views.route("/posts-list/<int:category_id>")
 def posts_list(category_id):
@@ -65,7 +68,9 @@ def user_posts(user_id):
 # ------------------------------------------------------------ about-me & contact & mypage 출력 페이지 ------------------------------------------------------------
 @views.route("/about-me")
 def about_me():
-    return render_template(BASE_VIEWS_DIR + "about_me.html", user=current_user)
+    return render_template(BASE_VIEWS_DIR + "about_me.html", 
+        user=current_user,
+    )
     
 @views.route("/contact", methods=['GET', 'POST'])
 @login_required
@@ -90,7 +95,9 @@ def contact():
 @views.route('/mypage')
 @login_required
 def mypage():
-    return render_template(BASE_VIEWS_DIR + "mypage.html", user=current_user)
+    return render_template(BASE_VIEWS_DIR + "mypage.html", 
+        user=current_user,
+    )
     
 # ------------------------------------------------------------ post 관련 페이지 ------------------------------------------------------------
 @views.route('/post/<int:post_id>')

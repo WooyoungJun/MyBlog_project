@@ -9,23 +9,31 @@ from blog.forms import CommentForm, SignUpForm, PostForm
 from blog.models import get_model, db
 
 class AdminBase(ModelView):
+    column_formatters = {
+        'date_created': lambda view, context, model, name: model.date_created.strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
     def is_accessible(self):
         if current_user.is_authenticated == True and current_user.admin_check == True:
             return True
         else:
             return abort(403)
-    column_formatters = {
-        'date_created': lambda view, context, model, name: model.date_created.strftime('%Y-%m-%d %H:%M:%S')
-    }
-
+        
+    # 사용자 지정 도구 추가
+    @action('update_model_instances', 'Update Model', 'Are you sure you want to update model for selected object?')
+    def update_model_instances(self, ids):
+        instances = self.model.query.filter(self.model.id.in_(ids)).all()
+        for instance in instances:
+            instance.update_instance()
+            
 class UserAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'username', 'email', 'date_created', 'post_create_permission', 'admin_check', 'posts_count', 'comments_count')
+    column_list = ('id', 'username', 'email', 'date_created', 'post_create_permission', 'admin_check', 'posts_count', 'comments_count', 'is_third_party')
 
     # 2. 폼 데이터 설정
     permisson_check = {
         'post_create_permission': BooleanField('post_create_permission', default=False), 
-        'admin_check': BooleanField('admin_check', default=False)
+        'admin_check': BooleanField('admin_check', default=False),
     }
     create_form = type('ExtendedSignUpForm', (SignUpForm,), permisson_check)
     edit_form = type('EditForm', (FlaskForm,), permisson_check)
@@ -37,16 +45,6 @@ class UserAdmin(AdminBase):
         model.posts_count = model.user_posts.count()
         model.comments_count = model.user_comments.count()
         super().on_model_change(form, model, is_created)
-    
-    # 4사용자 지정 도구 추가
-    @action('update_myinfo', 'Update My Info', 'Are you sure you want to update myinfo for selected users?')
-    def update_myinfo(self, ids):
-        # 선택된 사용자 목록 가져오기
-        users = self.model.query.filter(self.model.id.in_(ids)).all()
-        
-        # 각 사용자에 대해 update_myinfo 메소드 실행
-        for user in users:
-            user.update_myinfo()
 
 class PostAdmin(AdminBase):
     # 1. 표시 할 열 설정
@@ -115,8 +113,10 @@ class MessageAdmin(AdminBase):
         super().on_model_change(form, model, is_created)
 
 def get_all_admin_models():
-    return [[UserAdmin, get_model('user')], 
-            [PostAdmin, get_model('post')], 
-            [CategoryAdmin, get_model('category')], 
-            [CommentAdmin, get_model('comment')],
-            [MessageAdmin, get_model('message')]]
+    return [
+        [UserAdmin, get_model('user')], 
+        [PostAdmin, get_model('post')], 
+        [CategoryAdmin, get_model('category')], 
+        [CommentAdmin, get_model('comment')],
+        [MessageAdmin, get_model('message')],
+    ]

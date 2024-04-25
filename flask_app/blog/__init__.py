@@ -4,7 +4,7 @@ from flask_admin import Admin
 from blog.admin_models import get_all_admin_models
 from .models import db, migrate, get_model
 
-def create_app(config):
+def create_app(config, type):
     '''
     플라스크의 팩토리 지정함수(app 객체 생성 함수)
     app 객체를 생성할 때 전역으로 접근하지 못하게 함 
@@ -12,24 +12,51 @@ def create_app(config):
     '''
     app = Flask(__name__)
     app.config.from_object(config) # 환경변수 설정 코드
+    app.secret_key = config.SECRET_KEYS[f'{type}_SECRET_KEY']
     db.init_app(app)
     migrate.init_app(app, db)
+    with app.app_context():
+        # db.Model 상속한 모든 클래스 추적해서 테이블 생성
+        db.create_all()
 
     # admin 페이지에 모델뷰 추가
-    admin = Admin(app, name='MyBlog', template_mode='bootstrap3')
-    for admin_model, model in get_all_admin_models():
-        admin.add_view(admin_model(model, db.session))
+    add_admin_view(app)
 
     # blueprint 등록 코드, url_prefix를 기본으로 함
-    from .views import views
-    app.register_blueprint(views)
-    from .auth import auth
-    app.register_blueprint(auth, url_prefix='/auth')
+    add_blueprint(app)
 
     # jinja2 필터 등록
     app.jinja_env.filters['datetime'] = lambda x: x.strftime('%y.%m.%d %H:%M')
 
     # login_manager 설정 코드
+    set_login_manager(app)
+    
+    # 403, 404, favicon error handler
+    set_app_error(app)
+
+    # create_user, update_all_model_instances 명령어 추가
+    add_cli(app)
+
+    # sqlalchemy 쿼리 로깅 확인용 
+    # import logging
+    # logging.basicConfig()
+    # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+        
+    return app
+
+def add_admin_view(app):
+    # admin 페이지에 모델뷰 추가
+    admin = Admin(app, name='MyBlog', template_mode='bootstrap3')
+    for admin_model, model in get_all_admin_models():
+        admin.add_view(admin_model(model, db.session))
+
+def add_blueprint(app):
+    from .views import views
+    app.register_blueprint(views)
+    from .auth import auth
+    app.register_blueprint(auth, url_prefix='/auth')
+
+def set_login_manager(app):
     login_manager = LoginManager()
     login_manager.init_app(app) # app 연결
     login_manager.login_view = 'auth.login' # 로그인을 꼭 해야하는 페이지 접근 시 auth.login으로 리다이렉트 설정 
@@ -39,6 +66,7 @@ def create_app(config):
     def user_loader(user_id):
         return db.session.get(get_model('user'), int(user_id))
     
+def set_app_error(app):
     # 403(Forbidden) 오류 발생 시 로그인 페이지로 리디렉션
     @app.errorhandler(403)
     def handle_forbidden_error(e):
@@ -54,7 +82,8 @@ def create_app(config):
     @app.route('/favicon.ico') 
     def favicon(): 
         return url_for('static', filename='assets/favicon.ico')
-
+    
+def add_cli(app):
     from click import command               # 커맨드 라인 인터페이스 작성
     from flask.cli import with_appcontext   # Flask 애플리케이션 컨텍스트
     from sqlite3 import IntegrityError      # unique 제약조건 위배
@@ -84,16 +113,16 @@ def create_app(config):
         except IntegrityError:
             # 빨간색으로 표시
             print('\033[31m' + "Error : username or email already exists.")
+
+    @command(name="update_all_model_instances")
+    @with_appcontext
+    def update_all_model_instances():
+        for _, model in get_all_admin_models():
+            instances = db.session.query(model).all()
+            for instance in instances:
+                instance.update_instance()
+            print(f"Model {model.__name__} update finished!")
+
     # app에 등록
     app.cli.add_command(create_user)
-
-    # sqlalchemy 쿼리 로깅 확인용 
-    # import logging
-    # logging.basicConfig()
-    # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-
-    with app.app_context():
-        # db.Model 상속한 모든 클래스 추적해서 테이블 생성
-        db.create_all()
-        
-    return app
+    app.cli.add_command(update_all_model_instances)

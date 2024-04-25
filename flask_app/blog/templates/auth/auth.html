@@ -1,7 +1,7 @@
 <!-- flask_app/blog/templates/auth/auth.html -->
 {% extends "base.html" %}
 
-{% block title %} MyBlog - {{title_name}} {% endblock %}
+{% block title %} MyBlog - {{type}} {% endblock %}
 
 {% block header %}
 <header class="masthead" style="background-image: url('../static/assets/img/contact-bg.jpg')">
@@ -22,23 +22,30 @@
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 justify-content-center">
             <div class="col-md-10 col-lg-8 col-xl-7">
-                <div class="my-5">
-                    <form id="{{ title_name.replace(' ', '').lower() }}Form" method="POST">
+                <div class="my-5 text-center">
+                    <form id="{{ type }}Form" method="POST" style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 3px dashed;">
                         {{form.csrf_token}}
                         {% for field in form if field.name != 'csrf_token' %}
                             <div class="form-floating">
                                 <!-- id = field이름 = field.id -->
                                 <!-- ~ = 문자열 연결 -->
                                 {{ field(class="form-control" ~ (' is-invalid' if field.errors else ''), required=True) }}
+                                <label for="{{ field.id }}">{{ field.label }}</label>
                                 {% for error in field.errors %}
                                     <span class="invalid-feedback" style="font-size: 16px; color:red;">{{ error }}</span>
                                 {% endfor %}
-                                <label for="{{ field.id }}">{{ field.label }}</label>
                             </div>
                         {% endfor %}
                         <br />
-                        <button class="btn btn-primary text-uppercase" id="{{ title_name.replace(' ', '').lower() }}Button" type="submit">{{title_name}}</button>
+                        <button class="btn btn-primary text-uppercase" id="{{ type }}Button" type="submit">{{type}}</button>
                     </form>
+                    
+                    <p id="third-party-login">
+                        <!-- Google 로그인 아이콘 추가 -->
+                        <a href="{{url_for('auth.google_auth_page', type=type)}}">
+                            <img src="../static/assets/img/web_light_rd_{{type}}.png" alt="Google 로그인">
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>

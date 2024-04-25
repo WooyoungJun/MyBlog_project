@@ -14,3 +14,6 @@ echo "Flask application container ID: $FLASK_CONTAINER_ID"
 # docker exec $FLASK_CONTAINER_ID flask db init
 docker exec $FLASK_CONTAINER_ID flask db migrate
 docker exec $FLASK_CONTAINER_ID flask db upgrade
+
+echo "update all model instances"
+docker exec $FLASK_CONTAINER_ID flask update_all_model_instances
