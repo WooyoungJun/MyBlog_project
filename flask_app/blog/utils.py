@@ -100,7 +100,7 @@ def make_auth_url(domain, type):
         scope=current_app.config[f'{domain}_SCOPE'],
         response_type='code'
     ))
-    return f'{current_app.config[f'{domain}_AUTH_URI']}?{query_string}'
+    return f"{current_app.config[f'{domain}_AUTH_URI']}?{query_string}"
 
 def get_access_token(domain, type):
     domain = domain.upper()
