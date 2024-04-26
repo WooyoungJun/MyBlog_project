@@ -4,7 +4,17 @@ from wtforms import SelectField, StringField, EmailField, PasswordField, TextAre
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 from blog.models import get_model
 
-class SignUpForm(FlaskForm):
+class BaseForm(FlaskForm):
+    def set_form(self, **kwargs):
+        for key, value in kwargs.items():
+            self[key].data = value
+    
+    def set_form(self, obj):
+        for field_name, value in self._fields.items():
+            if hasattr(obj, field_name):
+                setattr(value, 'data', getattr(obj, field_name))
+
+class SignUpForm(BaseForm):
     username = StringField('username', validators=[DataRequired('사용자 이름은 필수로 입력해야 합니다.'), Length(3,30, '사용자 이름이 너무 짧거나 깁니다.')])                                
     email = EmailField('email', validators=[DataRequired('사용자 이메일은 필수로 입력해야 합니다.'), Email('이메일 형식을 지켜주세요.')])                        
     password = PasswordField('password', validators=[DataRequired('비밀번호를 입력해주세요.'), 
@@ -12,11 +22,11 @@ class SignUpForm(FlaskForm):
                                                     EqualTo("password_check", message="비밀번호가 일치해야 합니다.")])
     password_check = PasswordField('password_check', validators=[DataRequired()])
     
-class LoginForm(FlaskForm):
+class LoginForm(BaseForm):
     email = EmailField('email', validators=[DataRequired('이메일을 입력해주세요'), Email('이메일 형식을 지켜주세요.')])
     password = PasswordField('password', validators=[DataRequired('비밀번호를 입력해주세요.'), Length(6, 30, '비밀번호 길이가 너무 짧거나 깁니다.')])
 
-class PostForm(FlaskForm):
+class PostForm(BaseForm):
     title = StringField('title', validators=[DataRequired('제목을 작성해주세요.')])
     content = TextAreaField('content', validators=[DataRequired('본문을 작성해주세요.')])
     category_id = SelectField('category', coerce=int, validators=[DataRequired('카테고리를 지정해주세요.')])
@@ -27,10 +37,10 @@ class PostForm(FlaskForm):
         self.category_id.choices = [(category.id, category.name) for category in get_model('category').query.all()]
         self.author.data = current_user.username
 
-class CommentForm(FlaskForm):
+class CommentForm(BaseForm):
     content = TextAreaField('content', validators=[DataRequired('댓글을 작성해주세요.')])
 
-class ContactForm(FlaskForm):
+class ContactForm(BaseForm):
     name = StringField('name', render_kw={'readonly': True})
     email = EmailField('email', render_kw={'readonly': True})
     content = TextAreaField('content', validators=[DataRequired('내용을 입력해주세요.')])
@@ -39,3 +49,6 @@ class ContactForm(FlaskForm):
         super(ContactForm, self).__init__(*args, **kwargs)
         self.name.data = current_user.username
         self.email.data = current_user.email
+
+class OtpForm(BaseForm):
+    otp = StringField('otp', validators=[Length(6, 6, 'OTP는 6자리여야 합니다.')])

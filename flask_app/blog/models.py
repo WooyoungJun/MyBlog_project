@@ -1,10 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import event, func, or_, and_
+from sqlalchemy import event, or_, func
 from sqlalchemy.orm import object_session
 from flask_login import UserMixin
 from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.orm import selectinload
 
 # 한국 시간대 오프셋(UTC+9)을 생성합니다.
 KST_offset = timezone(timedelta(hours=9))
@@ -38,6 +39,12 @@ class BaseModel(db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def save_instance(self, **kwargs):
+        for key, value in kwargs.items():
+            if key in self.__table__.columns:
+                setattr(self, key, value)
+        db.session.commit()
+
     def delete_instance(self):
         db.session.delete(self)
         db.session.commit()
@@ -49,12 +56,14 @@ class BaseModel(db.Model):
         db.session.commit()
     
     @classmethod
-    def get_instance(cls, **kwargs):
-        '''
-        and 조건으로 묶어서 모두 일치하는 객체 반환
-        '''
-        conditions = [getattr(cls, key) == value for key, value in kwargs.items()]
-        return db.session.query(cls).filter(and_(*conditions)).first()
+    def get_instance(cls, *relationships, **filter_conditions):
+        options = [selectinload(getattr(cls, attr)) for attr in relationships]
+        return db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
+    
+    @classmethod
+    def get_all(cls, *relationships, **filter_conditions):
+        options = [selectinload(getattr(cls, attr)) for attr in relationships]
+        return db.session.query(cls).filter_by(**filter_conditions).options(*options).all() 
     
     @classmethod
     def duplicate_check(cls, **kwargs):
@@ -75,7 +84,7 @@ class User(BaseModel, UserMixin):
     email = db.Column(db.String(150), unique=True)                                  # email unique
     password = db.Column(db.String(150))                                            # password 
     date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))         # 회원가입 날짜, 시간 기록
-    post_create_permission = db.Column(db.Boolean, default=False)                   # 글 작성 권한 여부
+    create_permission = db.Column(db.Boolean, default=False)                   # 글 작성 권한 여부
     admin_check = db.Column(db.Boolean, default=False)                              # 관리자 권한 여부
     is_third_party = db.Column(db.Boolean, default=False)                           # thirt-party 회원 가입 여부
 
@@ -97,6 +106,9 @@ class User(BaseModel, UserMixin):
             if not check_password_hash(password, user.password): return user, 'success'
             else: return None, '비밀번호가 틀렸습니다.'
         else: return None, '가입되지 않은 이메일입니다.'
+    
+    def permission_check(self):
+        return self.create_permission
 
     def update_instance(self):
         self.posts_count = self.user_posts.count()

@@ -6,7 +6,7 @@ from flask_wtf import FlaskForm
 from werkzeug.security import generate_password_hash
 from wtforms import BooleanField, StringField, SelectField
 from blog.forms import CommentForm, SignUpForm, PostForm
-from blog.models import get_model, db
+from blog.models import get_model
 
 class AdminBase(ModelView):
     column_formatters = {
@@ -80,14 +80,14 @@ class CommentAdmin(AdminBase):
     def create_form(self, obj=None):
         form = super().create_form(obj)
         form.author_id.data = current_user.username
-        form.post_id.choices = [(post.id, str(post.id) + ': ' + post.title) for post in db.session.query(get_model('post')).all()]
+        form.post_id.choices = [(post.id, str(post.id) + ': ' + post.title) for post in get_model('post').get_all()]
         return form
     
     # 4. 수정 폼 설정
     def edit_form(self, obj):
         form = super().edit_form(obj)
         form.author_id.data = current_user.username
-        post = db.session.get(get_model('post'), obj.post_id)
+        post = get_model('post').get_all(id=obj.post_id)
         form.post_id.choices = [(post.id, str(post.id) + ': ' + post.title)]
         return form
 

@@ -35,7 +35,7 @@
         if (confirm) {
             // 확인을 클릭한 경우에만 요청 보내기
             let postId = document.getElementById('post_data').getAttribute('data_post_id');
-            fetch('/post-delete/' + postId, {method:"GET"})
+            fetch('/post-delete/' + postId, {method:"POST"})
             .then(response => {
                 if (response.status === 200){
                     window.location.href = '/'
@@ -48,7 +48,7 @@
         if (confirm) {
             // 확인을 클릭한 경우에만 요청 보내기
             let commentId = button.getAttribute('data_comment_id');
-            fetch('/comment-delete/' + commentId, {method:"GET"})
+            fetch('/comment-delete/' + commentId, {method:"POST"})
             .then(response => {
                 window.location.reload();
                 if (response.status === 200){

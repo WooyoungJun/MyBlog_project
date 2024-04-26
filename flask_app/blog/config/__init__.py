@@ -23,6 +23,7 @@ class Config():
     MAIL_USERNAME = 'otter4752@gmail.com'
     MAIL_PASSWORD = MAIL_PASSWORD
     MAIL_PORT = 587
+    MAIL_LIMIT_TIME = 180
 
     '''
         oauth google client 환경 변수

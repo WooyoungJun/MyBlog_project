@@ -1,46 +1,62 @@
-import smtplib
 import requests
 import secrets
-import time
-from random import randint
-from email.mime.text import MIMEText
 from urllib.parse import urlencode
-from flask import Blueprint, abort, jsonify, redirect, render_template, flash, session, url_for, current_app, request
+from flask import Blueprint, redirect, render_template, flash, url_for, current_app, request
 from flask_login import login_required, login_user, logout_user, current_user
-from .utils import logout_required
-from .forms import LoginForm, SignUpForm
+from .utils import delete_session, get_otp, get_remain_time, logout_required, not_have_create_permission_required, only_post_method, save_session, session_update, smtp_send_mail, smtp_setup
+from .forms import LoginForm, OtpForm, SignUpForm
 from .models import get_model
 
 auth = Blueprint('auth', __name__)
 BASE_AUTH_DIR = 'auth/'
 
-@auth.route('/get_mail_authorized', methods=['POST'])
-def get_mail_authorized():
-    if request.method == 'GET': return abort(403)
+@auth.route('/mypage', methods=['GET', 'POST'])
+@login_required
+def mypage():
+    session_update()
+    form = OtpForm()
+    session_otp = get_otp()
+    remain_time = get_remain_time()
+    params = {
+        'user':current_user,
+        'otp':session_otp,
+        'remain_time':remain_time,
+        'form':form,
+    }
+    
+    if request.method == 'GET': return render_template(BASE_AUTH_DIR + "mypage.html", **params)
 
+    if not form.validate_on_submit():
+        flash('otp 비밀번호는 6자리입니다. 길이를 맞춰주세요', category="error")
+        return redirect(url_for('auth.mypage'))
+    
+    otp = form.otp.data
+    if otp != session_otp:
+        flash('otp 비밀번호가 일치하지 않습니다.', category="error")
+        current_app.logger.debug(otp, session_otp)
+        return redirect(url_for('auth.mypage'))
+    
+    delete_session()
+    current_user.save_instance(create_permission=True)
+    flash('이메일 인증 완료', category="success")
+    return render_template(BASE_AUTH_DIR + "mypage.html", user=current_user)
+
+@auth.route('/send_mail_otp', methods=['POST'])
+@only_post_method
+@not_have_create_permission_required
+def send_mail_otp():
     try:
-        email = request.form.get('email')
-        smtp = smtplib.SMTP(current_app.config['MAIL_SERVER'], 587)
-        smtp.starttls() # TLS 암호화 보안 연결 설정
-        smtp.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
-
-        otp = str(randint(100000, 999999))
-        msg = MIMEText(f'MyBlog 회원가입 \n인증번호를 입력하여 이메일 인증을 완료해 주세요.\n인증번호 :{otp}')
-        msg['Subject'] = '[MyBlog 이메일 인증]'
-        smtp.sendmail(current_app.config['MAIL_USERNAME'], email, msg.as_string())
-        flash('메세지 전송 완료', category="success")
-
-        session[f'otp_{email}'] = otp  # 세션에 인증번호 저장
-        session[f'time_{email}'] = int(time.time())  # 인증번호 생성 시간 저장
-        smtp.quit()
-        return redirect(url_for('auth.mail_check', email=email))
+        smtp = smtp_setup()
+        
+        otp = smtp_send_mail(smtp)
+        flash('인증번호 전송 완료', category="success")
+        save_session(otp)
     except Exception as e:
-        return jsonify({'status': 'fail', 'response':jsonify(e)})
+        flash(str(e), category="error")
+    finally:
+        smtp.quit()
 
-@auth.route('/mail_check/<string:email>')
-def mail_check(email):
-    if f'otp_{email}' not in session: return abort(403)
-    return render_template(BASE_AUTH_DIR + 'mail_check.html', user=current_user)
+    return redirect(url_for('auth.mypage'))
 
 @auth.route('/login', methods=['GET', 'POST'])
 @logout_required
@@ -59,13 +75,14 @@ def login():
         return render_template(BASE_AUTH_DIR + 'auth.html', **params)
 
     user, status = get_model('user').login_check(email=form.email.data, password=form.password.data)
-    if user:
-        login_user(user, remember=True)
-        flash('로그인 성공!', category="success")
-        return redirect(url_for('views.home'))
+    if not user:
+        flash(f'{status}', category="error")
+        return render_template(BASE_AUTH_DIR + 'auth.html', **params)
     
-    flash(f'{status}', category="error")
-    return render_template(BASE_AUTH_DIR + 'auth.html', **params)
+    login_user(user, remember=True)
+    flash('로그인 성공!', category="success")
+    return redirect(url_for('views.home'))
+
 
 @auth.route('/logout')
 @login_required
@@ -103,6 +120,7 @@ def sign_up():
     return redirect(url_for('views.home'))
 
 @auth.route('/google/<string:type>')
+@logout_required
 def google_auth_page(type):
     authorize_uri = current_app.config['GOOGLE_AUTH_URI']
     redirect_uri = current_app.config['GOOGLE_REDIRECT_URIS'][f'{type}_{current_app.config["mode"]}']
@@ -119,6 +137,7 @@ def google_auth_page(type):
     return redirect(f'{authorize_uri}?{query_string}')
 
 @auth.route('/callback/google/<string:type>')
+@logout_required
 def callback_google(type):
     code = request.args.get('code')
     token_uri = current_app.config.get('GOOGLE_TOKEN_URI')
