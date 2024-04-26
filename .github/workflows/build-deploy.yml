@@ -1,22 +1,22 @@
 name: Deploy to EC2
 
 on:
-  pull_request:
-    branches: [ "main" ]
+    pull_request:
+        branches: ["main"]
 # ------------------------- 작업 설정 -------------------------
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: SSH into EC2 and deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST_IP }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          port: ${{ secrets.EC2_SSH_PORT }}
-          script: |
-            cd MyBlog_project
-            git pull origin main
-            chmod +x run_docker.sh
-            ./run_docker.sh
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: SSH into EC2 and deploy
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.EC2_HOST_IP }}
+                  username: ${{ secrets.EC2_USERNAME }}
+                  key: ${{ secrets.EC2_PRIVATE_KEY }}
+                  port: ${{ secrets.EC2_SSH_PORT }}
+                  script: |
+                      cd MyBlog_project
+                      git pull
+                      chmod +x run_docker.sh
+                      ./run_docker.sh
