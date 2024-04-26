@@ -28,11 +28,11 @@ class AdminBase(ModelView):
             
 class UserAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'username', 'email', 'date_created', 'post_create_permission', 'admin_check', 'posts_count', 'comments_count', 'is_third_party')
+    column_list = ('id', 'username', 'email', 'create_permission', 'admin_check', 'posts_count', 'comments_count', 'is_third_party')
 
     # 2. 폼 데이터 설정
     permisson_check = {
-        'post_create_permission': BooleanField('post_create_permission', default=False), 
+        'create_permission': BooleanField('create_permission', default=False), 
         'admin_check': BooleanField('admin_check', default=False),
     }
     create_form = type('ExtendedSignUpForm', (SignUpForm,), permisson_check)
@@ -68,7 +68,7 @@ class CategoryAdmin(AdminBase):
 
 class CommentAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'content', 'date_created', 'author_id', 'post_id')
+    column_list = ('id', 'content', 'date_created', 'user', 'post')
 
     # 2. 폼 데이터 설정
     form = type('ExtendedCommentForm', (CommentForm,), {
@@ -98,7 +98,7 @@ class CommentAdmin(AdminBase):
 
 class MessageAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'content', 'user_id') 
+    column_list = ('id', 'content', 'user') 
 
     # 2. 폼 표시 X 열 설정
     form_excluded_columns = {'user_id', 'user'} 
