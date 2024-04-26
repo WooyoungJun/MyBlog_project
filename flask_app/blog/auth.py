@@ -1,9 +1,8 @@
 import requests
 import secrets
-from urllib.parse import urlencode
 from flask import Blueprint, redirect, render_template, flash, url_for, current_app, request
 from flask_login import login_required, login_user, logout_user, current_user
-from .utils import delete_session, get_otp, get_remain_time, logout_required, not_have_create_permission_required, only_post_method, save_session, session_update, smtp_send_mail, smtp_setup
+from .utils import delete_session, get_access_token, get_otp, get_remain_time, instance_check, logout_required, make_auth_url, not_have_create_permission_required, only_post_method, save_session, session_update, smtp_send_mail, smtp_setup
 from .forms import LoginForm, OtpForm, SignUpForm
 from .models import get_model
 
@@ -122,49 +121,21 @@ def sign_up():
 @auth.route('/google/<string:type>')
 @logout_required
 def google_auth_page(type):
-    authorize_uri = current_app.config['GOOGLE_AUTH_URI']
-    redirect_uri = current_app.config['GOOGLE_REDIRECT_URIS'][f'{type}_{current_app.config["mode"]}']
-    client_id = current_app.config['GOOGLE_CLIENT_ID']
-    scope = current_app.config['GOOGLE_SCOPE']
-    response_type = 'code'
-    
-    query_string = urlencode(dict(
-        redirect_uri=redirect_uri,
-        client_id=client_id,
-        scope=scope,
-        response_type=response_type
-    ))
-    return redirect(f'{authorize_uri}?{query_string}')
+    return redirect(make_auth_url(domain='google', type=type))
 
 @auth.route('/callback/google/<string:type>')
 @logout_required
 def callback_google(type):
-    code = request.args.get('code')
-    token_uri = current_app.config.get('GOOGLE_TOKEN_URI')
-    client_id = current_app.config.get('GOOGLE_CLIENT_ID')
-    client_secret = current_app.config.get('GOOGLE_CLIENT_SECRET')
-    redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URIS')[f'{type}_{current_app.config["mode"]}']
-    grant_type = 'authorization_code'
-
-    access_token = requests.post(token_uri, data=dict(
-        code=code,
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
-        grant_type=grant_type
-    ))
-    
+    access_token = get_access_token(domain='google', type=type)
     if access_token.status_code != 200:
-        flash(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}', category="error")
+        flash(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}', category="error")
         return redirect(url_for('views.home'))
     
-    userinfo_uri = current_app.config['GOOGLE_USERINFO_URI']
-    response = requests.get(userinfo_uri, params=dict(
+    response = requests.get(current_app.config['GOOGLE_USERINFO_URI'], params=dict(
         access_token=access_token.json()['access_token']
     ))
-
     if response.status_code != 200:
-        flash(f'userinfo RESPONSE 에러 코드: {response.status_code}', category="error")
+        flash(f'userinfo RESPONSE 에러 코드: {response.status_code}\n{response}', category="error")
         return redirect(url_for('views.home'))
 
     if type == 'login':
@@ -174,9 +145,8 @@ def callback_google(type):
             2. login_user(user)
         '''
         user = get_model('user').get_instance(email=response.json()['email'])
-        if not user:
-            flash('가입하지 않은 이메일입니다.', category="error")
-            return redirect(url_for('views.home'))
+
+        if instance_check(user, 'user'): return redirect(url_for('views.home'))
         
         login_user(user, remember=True)
         flash('로그인 성공!', category="success")
@@ -199,7 +169,7 @@ def callback_google(type):
             username=user_data['name'],
             email=user_data['email'],
             password=secrets.token_hex(16),
-            post_create_permission=True,
+            create_permission=True,
             is_third_party=True
         ).add_instance()
         flash('회원가입 완료!', category="success")
