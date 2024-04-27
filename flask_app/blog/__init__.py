@@ -50,11 +50,11 @@ def add_admin_view(app):
 
 def add_blueprint(app):
     from .views import views
-    app.register_blueprint(views)
+    app.register_blueprint(views, name='views')
     from .auth import auth
-    app.register_blueprint(auth, url_prefix='/auth')
+    app.register_blueprint(auth, name='auth', url_prefix='/auth')
     from .error import error
-    app.register_blueprint(error)
+    app.register_blueprint(error, name='error')
 
 def set_login_manager(app):
     login_manager = LoginManager()
