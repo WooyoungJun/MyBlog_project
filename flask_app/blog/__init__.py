@@ -31,9 +31,6 @@ def create_app(config, mode):
 
     # login_manager 설정 코드
     set_login_manager(app)
-    
-    # 403, 404, favicon error handler
-    set_app_error(app)
 
     # create_user, update_all_model_instances 명령어 추가
     add_cli(app)
@@ -56,6 +53,8 @@ def add_blueprint(app):
     app.register_blueprint(views)
     from .auth import auth
     app.register_blueprint(auth, url_prefix='/auth')
+    from .error import error
+    app.register_blueprint(error)
 
 def set_login_manager(app):
     login_manager = LoginManager()
@@ -66,23 +65,6 @@ def set_login_manager(app):
     @login_manager.user_loader
     def user_loader(user_id):
         return db.session.get(get_model('user'), int(user_id))
-    
-def set_app_error(app):
-    # 403(Forbidden) 오류 발생 시 로그인 페이지로 리디렉션
-    @app.errorhandler(403)
-    def handle_forbidden_error(e):
-        flash('권한이 없습니다', category="error")
-        return redirect(url_for('auth.login'))
-    
-    # 404(Not Found) 오류 발생 시 홈페이지로 리디렉션
-    @app.errorhandler(404)
-    def handle_not_found_error(e):
-        flash('잘못된 경로입니다.', category="error")
-        return redirect(url_for('views.home'))
-    
-    @app.route('/favicon.ico') 
-    def favicon(): 
-        return url_for('static', filename='assets/favicon.ico')
     
 def add_cli(app):
     from click import command               # 커맨드 라인 인터페이스 작성
@@ -119,7 +101,7 @@ def add_cli(app):
     @with_appcontext
     def update_all_model_instances():
         for _, model in get_all_admin_models():
-            instances = db.session.query(model).all()
+            instances = model.get_all()
             for instance in instances:
                 instance.update_instance()
             print(f"Model {model.__name__} update finished!")
