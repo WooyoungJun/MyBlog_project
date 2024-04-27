@@ -4,6 +4,10 @@ venv/
 # config 파일
 production.py
 
+# test.py 파일 
+# git update-index --skip-worktree tests/test.py = 추적 X
+# git update-index --no-skip-worktree tests/test.py = 추적 O
+
 # sqlite3 db
 db.sqlite3
 *.db

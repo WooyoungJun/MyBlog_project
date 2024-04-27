@@ -5,7 +5,7 @@ from flask_login import UserMixin
 from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 # 한국 시간대 오프셋(UTC+9)을 생성합니다.
 KST_offset = timezone(timedelta(hours=9))
@@ -56,12 +56,37 @@ class BaseModel(db.Model):
         db.session.commit()
     
     @classmethod
-    def get_instance(cls, *relationships, **filter_conditions):
-        options = [selectinload(getattr(cls, attr)) for attr in relationships]
-        return db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
+    def get_instance_by_id(cls, id):
+        return db.session.get(cls, id)
     
     @classmethod
-    def get_all(cls, *relationships, **filter_conditions):
+    def get_instance_by_id_with(cls, id, *relationships):
+        options = [joinedload(getattr(cls, attr)) for attr in relationships]
+        return db.session.get(cls, id, options=options)
+    
+    @classmethod
+    def get_instance(cls, **filter_conditions):
+        return db.session.query(cls).filter_by(**filter_conditions).first()
+    
+    @classmethod
+    def get_instance_with(cls, *relationships, **filter_conditions):
+        options = [selectinload(getattr(cls, attr)) for attr in relationships]
+        return db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
+
+    @classmethod
+    def count(cls, **filter_conditions):
+        return db.session.query(func.count(cls.id)).filter_by(**filter_conditions).scalar()
+    
+    @classmethod
+    def count_all(cls):
+        return db.session.query(func.count(cls.id)).scalar()
+    
+    @classmethod
+    def get_all(cls):
+        return db.session.query(cls).all() 
+    
+    @classmethod
+    def get_all_with(cls, *relationships, **filter_conditions):
         options = [selectinload(getattr(cls, attr)) for attr in relationships]
         return db.session.query(cls).filter_by(**filter_conditions).options(*options).all() 
     
@@ -99,7 +124,7 @@ class User(BaseModel, UserMixin):
         super().__init__(**kwargs)
     
     @classmethod
-    def login_check(cls, email, password):
+    def user_check(cls, email, password):
         email = email.strip().replace(' ', '')
         user = db.session.query(cls).filter_by(email=email).first()
         if user:
@@ -107,7 +132,7 @@ class User(BaseModel, UserMixin):
             else: return None, '비밀번호가 틀렸습니다.'
         else: return None, '가입되지 않은 이메일입니다.'
     
-    def permission_check(self):
+    def have_permission(self):
         return self.create_permission
 
     def update_instance(self):

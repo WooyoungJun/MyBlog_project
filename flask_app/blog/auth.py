@@ -1,13 +1,27 @@
-import requests
 import secrets
-from flask import Blueprint, redirect, render_template, flash, url_for, current_app, request
+from flask import Blueprint, redirect, url_for, request
 from flask_login import login_required, login_user, logout_user, current_user
-from .utils import delete_session, get_access_token, get_otp, get_remain_time, instance_check, logout_required, make_auth_url, not_have_create_permission_required, only_post_method, save_session, session_update, smtp_send_mail, smtp_setup
+from .utils import (
+    logout_required, only_post_method,
+    not_have_create_permission_required, render_template_with_user,     # 데코레이터 함수
+
+    form_invalid, success_msg, error_msg, get_method,                   # 기타
+
+    smtp_setup, smtp_send_mail,
+    save_session, session_update, delete_session,
+    get_otp, get_remain_time,                                           # email 인증
+
+    make_auth_url, get_access_token, get_user_info                      # third-party 인증
+)
 from .forms import LoginForm, OtpForm, SignUpForm
 from .models import get_model
 
 auth = Blueprint('auth', __name__)
 BASE_AUTH_DIR = 'auth/'
+
+def render_template_auth(template_name_or_list, **context):
+    context['template_name_or_list'] = template_name_or_list
+    return render_template_with_user(BASE_AUTH_DIR, **context)
 
 @auth.route('/mypage', methods=['GET', 'POST'])
 @login_required
@@ -17,28 +31,26 @@ def mypage():
     session_otp = get_otp()
     remain_time = get_remain_time()
     params = {
-        'user':current_user,
         'otp':session_otp,
         'remain_time':remain_time,
         'form':form,
     }
     
-    if request.method == 'GET': return render_template(BASE_AUTH_DIR + "mypage.html", **params)
+    if get_method(): return render_template_auth("mypage.html", **params)
 
-    if not form.validate_on_submit():
-        flash('otp 비밀번호는 6자리입니다. 길이를 맞춰주세요', category="error")
-        return redirect(url_for('auth.mypage'))
+    if form_invalid(form):
+        error_msg('otp 비밀번호는 6자리입니다. 길이를 맞춰주세요')
+        return render_template_auth("mypage.html", **params)
     
     otp = form.otp.data
     if otp != session_otp:
-        flash('otp 비밀번호가 일치하지 않습니다.', category="error")
-        current_app.logger.debug(otp, session_otp)
-        return redirect(url_for('auth.mypage'))
+        error_msg('otp 비밀번호가 일치하지 않습니다.')
+        return render_template_auth("mypage.html", **params)
     
     delete_session()
     current_user.save_instance(create_permission=True)
-    flash('이메일 인증 완료', category="success")
-    return render_template(BASE_AUTH_DIR + "mypage.html", user=current_user)
+    success_msg('이메일 인증 완료')
+    return render_template_auth("mypage.html")
 
 @auth.route('/send_mail_otp', methods=['POST'])
 @only_post_method
@@ -46,12 +58,11 @@ def mypage():
 def send_mail_otp():
     try:
         smtp = smtp_setup()
-        
         otp = smtp_send_mail(smtp)
-        flash('인증번호 전송 완료', category="success")
+        success_msg('인증번호 전송 완료')
         save_session(otp)
     except Exception as e:
-        flash(str(e), category="error")
+        error_msg(str(e))
     finally:
         smtp.quit()
 
@@ -63,31 +74,29 @@ def login():
     form = LoginForm()
     params = {
         'form': form,
-        'user': current_user,
         'type': 'login',
     }
 
-    if request.method == 'GET': return render_template(BASE_AUTH_DIR + 'auth.html', **params)
+    if get_method(): return render_template_auth('auth.html', **params)
     
-    if not form.validate_on_submit():
-        flash('로그인 실패. 유효성 검사 실패', category="error")
-        return render_template(BASE_AUTH_DIR + 'auth.html', **params)
-
-    user, status = get_model('user').login_check(email=form.email.data, password=form.password.data)
+    if form_invalid(form):
+        error_msg('로그인 실패. 유효성 검사 실패')
+        return render_template_auth('auth.html', **params)
+    
+    user, status = get_model('user').user_check(email=form.email.data, password=form.password.data)
     if not user:
-        flash(f'{status}', category="error")
-        return render_template(BASE_AUTH_DIR + 'auth.html', **params)
+        error_msg(f'{status}')
+        return render_template_auth('auth.html', **params)
     
     login_user(user, remember=True)
-    flash('로그인 성공!', category="success")
+    success_msg('로그인 성공!')
     return redirect(url_for('views.home'))
-
 
 @auth.route('/logout')
 @login_required
 def logout():
     logout_user() 
-    flash('로그아웃 성공!', category="success")
+    success_msg('로그아웃 성공!')
     return redirect(url_for('views.home'))
 
 @auth.route('/sign-up', methods=['GET', 'POST'])
@@ -96,26 +105,25 @@ def sign_up():
     form = SignUpForm()
     params = {
         'form': form,
-        'user': current_user,
         'type': 'signup',
     }
 
-    if request.method == 'GET': return render_template(BASE_AUTH_DIR + 'auth.html', **params)
-
-    if not form.validate_on_submit():
-        flash('회원가입 실패. 유효성 검사 실패', category="error")
-        return render_template(BASE_AUTH_DIR + 'auth.html', **params)
+    if get_method(): return render_template_auth('auth.html', **params)
+    
+    if form_invalid(form):
+        error_msg('회원가입 실패. 유효성 검사 실패')
+        return render_template_auth('auth.html', **params)
 
     if get_model('user').duplicate_check(email=form.email.data, username=form.username.data):
-        flash('중복된 정보가 존재합니다', category="error")
-        return render_template(BASE_AUTH_DIR + 'auth.html', **params)
+        error_msg('중복된 정보가 존재합니다')
+        return render_template_auth('auth.html', **params)
     
     get_model('user')( 
         username = form.username.data,
         email = form.email.data,
         password = form.password.data,
     ).add_instance()
-    flash('회원가입 완료!', category="success")
+    success_msg('회원가입 완료!')
     return redirect(url_for('views.home'))
 
 @auth.route('/google/<string:type>')
@@ -128,14 +136,12 @@ def google_auth_page(type):
 def callback_google(type):
     access_token = get_access_token(domain='google', type=type)
     if access_token.status_code != 200:
-        flash(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}', category="error")
+        error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
         return redirect(url_for('views.home'))
     
-    response = requests.get(current_app.config['GOOGLE_USERINFO_URI'], params=dict(
-        access_token=access_token.json()['access_token']
-    ))
+    response = get_user_info(domain='google', access_token=access_token.json()['access_token'])
     if response.status_code != 200:
-        flash(f'userinfo RESPONSE 에러 코드: {response.status_code}\n{response}', category="error")
+        error_msg(f'userinfo RESPONSE 에러 코드: {response.status_code}\n{response}')
         return redirect(url_for('views.home'))
 
     if type == 'login':
@@ -145,11 +151,12 @@ def callback_google(type):
             2. login_user(user)
         '''
         user = get_model('user').get_instance(email=response.json()['email'])
-
-        if instance_check(user, 'user'): return redirect(url_for('views.home'))
+        if not user:
+            error_msg('회원 가입이 필요한 이메일입니다.')
+            return redirect(url_for('views.home'))
         
         login_user(user, remember=True)
-        flash('로그인 성공!', category="success")
+        success_msg('로그인 성공!')
         return redirect(url_for('views.home'))
     else:
         '''
@@ -160,9 +167,8 @@ def callback_google(type):
         '''
         user_data = response.json()
         user = get_model('user').duplicate_check(email=user_data['email'], username=user_data['name'])
-
-        if user: 
-            flash('중복된 정보가 존재합니다.', category="error")
+        if user:
+            error_msg('중복된 정보가 존재합니다.')
             return redirect(url_for('views.home'))
 
         get_model('user')(
@@ -170,8 +176,8 @@ def callback_google(type):
             email=user_data['email'],
             password=secrets.token_hex(16),
             create_permission=True,
-            is_third_party=True
+            is_third_party=True,
         ).add_instance()
-        flash('회원가입 완료!', category="success")
+        success_msg('회원가입 완료!')
         return redirect(url_for('views.home'))
         
