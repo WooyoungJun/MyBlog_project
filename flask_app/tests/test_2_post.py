@@ -2,11 +2,11 @@ import os
 import sys
 # 현재 스크립트의 부모 디렉터리를 상위로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from flask_login import login_user, logout_user
-from blog.models import db, get_model
-from tests.test_base import TestBase
 from bs4 import BeautifulSoup
+
+from blog.models import get_model
+from tests.test_0_base import TestBase
 
 class PostTest(TestBase):
     name = 'POST'
@@ -23,21 +23,18 @@ class PostTest(TestBase):
 
     # 카테고리 2개 추가(category 1, category 2)
     def add_categories(self):
-        db.session.add(get_model('category')(name='category 1'))
-        db.session.commit()
-        db.session.add(get_model('category')(name='category 2'))
-        db.session.commit()
+        get_model('category')(name='category 1').add_instance()
+        get_model('category')(name='category 2').add_instance()
 
     # 회원가입(db에 직접 넣기) 후 로그인(login_user -> current_user 사용 가능)
-    def signUpAndLogin(self, post_create_permission=False):
+    def signUpAndLogin(self, create_permission=False):
         user = get_model('user')(
             username='11111',
             email='test1@example.com',
             password='123456',
-            post_create_permission=post_create_permission,
+            create_permission=create_permission,
         )
-        db.session.add(user)
-        db.session.commit()
+        user.add_instance()
         login_user(user, remember=True)
         return user
     
@@ -47,7 +44,7 @@ class PostTest(TestBase):
             title='test title',
             content='test content',
             category_id=2, # 'category 2'
-            author_id=1
+            author_id=1,
         ))
 
     ''' 
@@ -56,7 +53,7 @@ class PostTest(TestBase):
     '''
     def test_1_make_category(self):
         # 1. 카테고리 추가 후 db에 적용 잘 됐는지 확인
-        self.assertEqual(get_model('category').query.filter_by(id=2).first().name, 'category 2')
+        self.assertEqual(get_model('category').get_instance_by_id(2).name, 'category 2')
 
         # 2. category 페이지 접속했을 때 카테고리 목록이 잘 출력되는지 확인
         response = self.test_client.get('/category')
@@ -83,8 +80,7 @@ class PostTest(TestBase):
         self.assertEqual(response_create_post_page.status_code, 302)
 
         # 3. 권한 변경 후 다시 시도
-        user.post_create_permission = True
-        db.session.commit()
+        user.save_instance(create_permission=True)
         response_create_post_page = self.test_client.get('/post-create')
         self.assertEqual(response_create_post_page.status_code, 200)
 
@@ -103,9 +99,9 @@ class PostTest(TestBase):
     '''
     def test_3_after_create_post(self):
         # 1. 회원 가입 + 로그인 후 post 생성
-        self.signUpAndLogin(post_create_permission=True)
+        self.signUpAndLogin(create_permission=True)
         self.create_post()
-        self.assertEqual(get_model('post').query.count(), 1) # db 체크
+        self.assertEqual(get_model('post').count_all(), 1)
 
         # 2. post 페이지 접근 후 확인
         response_post_page = self.test_client.get('/post/1')
@@ -131,7 +127,7 @@ class PostTest(TestBase):
     '''
     def test_4_update_post(self):
         # 1. 회원 가입 + 로그인 후 post 생성
-        user1 = self.signUpAndLogin(post_create_permission=True)
+        self.signUpAndLogin(create_permission=True)
         self.create_post()
 
         # 2. post 페이지 접근 후 수정 페이지 이동 (Edit, Delete 있어야 함)
@@ -168,10 +164,9 @@ class PostTest(TestBase):
             username='22222',
             email='test2@example.com',
             password='123456',
-            post_create_permission=True,
+            create_permission=True,
         )
-        db.session.add(user2)
-        db.session.commit()
+        user2.add_instance()
         login_user(user2, remember=True)
 
         # 6. 새로운 유저로 post 접근 후 edit 확인
@@ -192,11 +187,11 @@ class PostTest(TestBase):
     '''
     def test_5_delete_post(self):
         # 1. 회원 가입 + 로그인 후 post 생성
-        user1 = self.signUpAndLogin(post_create_permission=True)
+        self.signUpAndLogin(create_permission=True)
         self.create_post()
 
         # 2. 포스트 삭제 요청 전송 후 확인(성공 = 200 code)
-        response = self.test_client.get('/post-delete/1')
+        response = self.test_client.post('/post-delete/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
 

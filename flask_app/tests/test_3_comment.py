@@ -2,12 +2,11 @@ import os
 import sys
 # 현재 스크립트의 부모 디렉터리를 상위로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-
 from flask_login import login_user, logout_user
-from blog.models import db, get_model
-from tests.test_base import TestBase
 from bs4 import BeautifulSoup
+
+from blog.models import get_model
+from tests.test_0_base import TestBase
 
 class CommentTest(TestBase):
     name = 'COMMENT'
@@ -15,7 +14,7 @@ class CommentTest(TestBase):
     # 매 시작 전 카테고리 추가
     def setUp(self):
         super().setUp()
-        self.signUpAndLoginTwoUsers()
+        self.signUpTwoUsersAndLoginOne()
         self.create_post()
     
     # 매 종료 후 로그아웃
@@ -24,34 +23,31 @@ class CommentTest(TestBase):
         super().tearDown()
 
     # 유저 2명 생성 후 유저 1로 로그인
-    def signUpAndLoginTwoUsers(self, post_create_permission=False):
+    def signUpTwoUsersAndLoginOne(self):
         self.user1 = get_model('user')(
             username='11111',
             email='test1@example.com',
             password='123456',
-            post_create_permission=post_create_permission,
+            create_permission=True,
         )
-        db.session.add(self.user1)
-        db.session.commit()
         self.user2 = get_model('user')(
             username='22222',
             email='test2@example.com',
             password='123456',
-            post_create_permission=post_create_permission,
+            create_permission=True,
         )
+        self.user1.add_instance()
+        self.user2.add_instance()
         login_user(self.user1, remember=True)
     
     # post 생성
     def create_post(self):
-        post = get_model('post')(
+        get_model('post')(
             title='test title',
             content='test content',
             category_id=2, # 'category 2'
-            author_id=1
-        )
-        db.session.add(post)
-        db.session.commit()
-
+            author_id=1,
+        ).add_instance()
 
     '''
     1. comment 추가 확인
@@ -60,7 +56,7 @@ class CommentTest(TestBase):
     def test_1_comment_add(self):
         # 1. 댓글 생성
         self.test_client.post('/comment-create/1', data=dict(content="test1"))
-        self.assertEqual(get_model('comment').query.count(), 1) # db 확인
+        self.assertEqual(get_model('comment').count_all(), 1) # db 확인
 
         # 2. 댓글 생성자 댓글 확인
         response = self.test_client.get('post/1')
@@ -131,7 +127,7 @@ class CommentTest(TestBase):
         self.test_client.post('/comment-create/1', data=dict(content="test1"))
 
         # 2. 삭제 요청 후 확인
-        response = self.test_client.get('/comment-delete/1')
+        response = self.test_client.post('/comment-delete/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
         response = self.test_client.get('post/1')
