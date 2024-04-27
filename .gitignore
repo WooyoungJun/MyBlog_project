@@ -4,10 +4,6 @@ venv/
 # config 파일
 production.py
 
-# tests 폴더
-tests/
-test.py
-
 # sqlite3 db
 db.sqlite3
 *.db
