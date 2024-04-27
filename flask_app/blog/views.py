@@ -1,10 +1,10 @@
 from flask import Blueprint, abort, jsonify, url_for, redirect
 from flask_login import current_user
-from blog.forms import CommentForm, ContactForm, PostForm
-from blog.models import get_model
+from .forms import CategoryForm, CommentForm, ContactForm, PostForm
+from .models import get_model
 from .utils import (
-    only_post_method, render_template_with_user,
-    create_permission_required,                                  # 데코레이터 함수
+    admin_required, only_post_method, 
+    render_template_with_user, create_permission_required,       # 데코레이터 함수
 
     get_method, post_method, form_invalid, form_valid, 
     error_msg, success_msg, is_owner                             # 기타
@@ -71,7 +71,7 @@ def posts_list(category_id):
         category_name=selected_category.name,
     )
 
-# ------------------------------------------------------------ about-me & contact 출력 페이지 ------------------------------------------------------------
+# ------------------------------------------------------------ about-me & contact & make_category 출력 페이지 ------------------------------------------------------------
 @views.route("/about-me")
 def about_me():
     return render_template_views("about_me.html")
@@ -90,6 +90,21 @@ def contact():
         form.content.data = ''
 
     return render_template_views("contact.html", form=form)
+
+@views.route("/make-category", methods=['GET', 'POST'])
+@admin_required
+def make_category():
+    form = CategoryForm()
+
+    if post_method() and form_valid(form):
+        if get_model('category').duplicate_check(name=form.name.data):
+            error_msg('이미 존재하는 카테고리입니다.')
+        else:
+            get_model('category')(name=form.name.data).add_instance()
+            success_msg(f'{form.name.data} category 생성에 성공하였습니다.')
+        form.name.data = ''
+
+    return render_template_views("make_category.html", form=form)
     
 # ------------------------------------------------------------ post 관련 페이지 ------------------------------------------------------------
 @views.route('/post/<int:post_id>')

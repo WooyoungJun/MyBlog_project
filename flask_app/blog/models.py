@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import event, or_, func
+from sqlalchemy import String, event, or_, func
 from sqlalchemy.orm import object_session
 from flask_login import UserMixin
 from flask_migrate import Migrate
@@ -96,7 +96,12 @@ class BaseModel(db.Model):
         or 조건으로 묶어서 하나라도 존재하면 첫번째 객체 반환
         중복 없으면 None 반환
         '''
-        conditions = [getattr(cls, key) == value for key, value in kwargs.items()]
+        conditions = [func.upper(getattr(cls, key)) == func.upper(value) 
+            if isinstance(getattr(cls, key).type, String) 
+            else getattr(cls, key) == value 
+            for key, value in kwargs.items()
+        ]
+        
         return db.session.query(cls).filter(or_(*conditions)).first()
     
     def __repr__(self):
@@ -132,8 +137,11 @@ class User(BaseModel, UserMixin):
             else: return None, '비밀번호가 틀렸습니다.'
         else: return None, '가입되지 않은 이메일입니다.'
     
-    def have_permission(self):
+    def have_create_permission(self):
         return self.create_permission
+    
+    def have_admin_check(self):
+        return self.admin_check
 
     def update_instance(self):
         self.posts_count = self.user_posts.count()
@@ -165,6 +173,9 @@ class Category(BaseModel):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
     name = db.Column(db.String(150), unique=True)                                                   # 메뉴 이름       
     category_posts = db.relationship('Post', back_populates='category', cascade='delete, delete-orphan', lazy='dynamic')             
+
+    def __init__(self, name):
+        self.name = name.upper()
 
     def __repr__(self):
         return super().__repr__() + f'{self.name}'   

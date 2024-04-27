@@ -1,4 +1,4 @@
-<!-- flask_app/blog/templates/views/mypage.html -->
+<!-- flask_app/blog/templates/auth/mypage.html -->
 {% extends "base.html" %}
 
 {% block title %} MyBlog - MyPage {% endblock %}
@@ -38,6 +38,18 @@ document.addEventListener('DOMContentLoaded', function() {
         countdown(); 
     }
 });
+
+function onDeleteUser(){
+    let confirm = window.confirm('정말 탈퇴하시겠습니까?');
+    if (confirm) {
+        fetch('/auth/user-delete', {method:"POST"})
+        .then(response => {
+            if (response.status === 200){
+                window.location.href = '/'
+            }
+        })
+    }
+}
 </script>
 {% endblock %}
 
@@ -48,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <p class="text">
                 <b>Name:</b> {{user.username}} <br>
                 <b>Email:</b> {{user.email}} <br>
-                {% if user.have_permission() %}
+                {% if user.have_create_permission() %}
                     <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
                     <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
                 {% else %}
@@ -79,6 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         </form>
                     {% endif %}
                 {% endif %}
+                <br />
+                <br />
+                <button onclick="onDeleteUser()" class="btn btn-danger" id="delete_button">탈퇴하기</button>
             </p>
         </div>
     </div>

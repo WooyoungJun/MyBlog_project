@@ -1,5 +1,5 @@
 import secrets
-from flask import Blueprint, redirect, url_for, request
+from flask import Blueprint, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 from .utils import (
     logout_required, only_post_method,
@@ -125,6 +125,17 @@ def sign_up():
     ).add_instance()
     success_msg('회원가입 완료!')
     return redirect(url_for('views.home'))
+
+@auth.route('/user-delete', methods=['POST'])
+@only_post_method
+@login_required
+def user_delete():
+    user = get_model('user').get_instance_by_id(current_user.id)
+    logout_user()
+    
+    user.delete_instance()
+    success_msg('성공적으로 탈퇴하였습니다.')
+    return jsonify(message='success'), 200
 
 @auth.route('/google/<string:type>')
 @logout_required

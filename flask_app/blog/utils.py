@@ -9,6 +9,14 @@ from functools import wraps
 from random import randint
 
 # ------------------------------------------------- decorator 메소드 -------------------------------------------------
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.have_admin_check():
+            return abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
 def logout_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -29,7 +37,7 @@ def create_permission_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.have_permission():
+        if not current_user.have_create_permission():
             error_msg('이메일 인증이 필요합니다.')
             return redirect(url_for('views.home'))
         return f(*args, **kwargs)
