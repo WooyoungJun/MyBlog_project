@@ -18,9 +18,9 @@
             <div class="col-md-10 col-lg-8 col-xl-7">
                 <div class="site-heading">
                     {% if type == 'user_posts' %}
-                        <h2 id="user_wrapper">User: {{selected_user.username}}</h2>
+                        <h2 id="user_wrapper" name="user_{{selected_user.username}}">User: {{selected_user.username}}</h2>
                     {% else %}
-                        <h2 id="category_wrapper">Category : {{category_name}}</h2>
+                        <h2 id="category_wrapper" name="category_{{category_name}}">Category : {{category_name}}</h2>
                     {% endif %} 
                     <span class="subheading" id="posts_count">총 {{ posts | length }}개의 포스트가 있습니다.</span>
                 </div>
@@ -45,7 +45,7 @@
                         <p class="post-meta">
                             Category: <a href="{{url_for('views.posts_list', category_id=post.category_id)}}" id="post_category">{{post.category.name}}</a>
                             Posted by
-                            <a href="{{url_for('views.user_posts', user_id=post.author_id)}}" id="post_owner_name">{{post.user.username}}</a>
+                            <a id="post_owner_name" name="user_{{post.author_id}}" href="{{url_for('views.user_posts', user_id=post.author_id)}}">{{post.user.username}}</a>
                             <br>
                             {{post.date_created | datetime}}
                             comments: {{post.comments_count}}

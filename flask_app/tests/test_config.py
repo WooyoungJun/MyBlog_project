@@ -12,3 +12,10 @@ class TestConfig():
         'DEVELOPMENT_SECRET_KEY': 'test',
         'PRODUCTION_SECRET_KEY': 'test'
     }
+
+    from .test_secret import MAIL_PASSWORD
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_USERNAME = 'otter4752@gmail.com'
+    MAIL_PASSWORD = MAIL_PASSWORD
+    MAIL_PORT = 587
+    MAIL_LIMIT_TIME = 180

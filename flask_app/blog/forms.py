@@ -9,7 +9,7 @@ class BaseForm(FlaskForm):
         for key, value in kwargs.items():
             self[key].data = value
     
-    def set_form(self, obj):
+    def set_form_from_obj(self, obj):
         for field_name, value in self._fields.items():
             if hasattr(obj, field_name):
                 setattr(value, 'data', getattr(obj, field_name))

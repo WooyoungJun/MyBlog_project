@@ -50,7 +50,7 @@
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.post_create')}}">New Post</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.mypage')}}">My Page</a></li>
                             {% if user.have_admin_check() %}
-                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.make_category')}}">Make Category</a></li>
+                                <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.make_category')}}">Make Category</a></li>
                             {% endif %} 
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" style="color:red" href="{{url_for('auth.logout')}}">Logout</a></li>
                         {% endif %} 

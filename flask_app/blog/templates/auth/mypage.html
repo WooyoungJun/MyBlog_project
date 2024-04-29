@@ -56,44 +56,50 @@ function onDeleteUser(){
 {% block content %}
 <section class="about-section text-center" style="margin: 24px;">
     <div class="row">
-        <div class="col-md-6 mx-auto">
+        <div id="user_info" class="col-md-6 mx-auto">
             <p class="text">
                 <b>Name:</b> {{user.username}} <br>
                 <b>Email:</b> {{user.email}} <br>
                 {% if user.have_create_permission() %}
-                    <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
-                    <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
+                    <div id="after_auth_info">
+                        <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
+                        <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
+                    </div>
                 {% else %}
+                    <br/><br/>
                     {% if otp %}
-                        <br/><br/>
-                        <form id="postForm" method="POST">
-                            {{form.csrf_token}}
-                            {% for field in form if field.name != 'csrf_token'%}
-                                <div class="form-floating">
-                                    {{ field(id=field.id, class="form-control" ~ (' is-invalid' if field.errors else ''), 
-                                    required=True, style=("font-size: 16px;")) }}
-                                    <label for="{{ field.id }}" {% if field.errors %} class="invalid-feedback" {% endif %}>{{ field.label.text }}</label>
-                                    {% for error in field.errors %}
-                                        <span class="invalid-feedback" style="font-size: 16px; color:red;">{{ error }}</span>
-                                    {% endfor %}
+                        <div id="otpInput">
+                            <form id="otpForm" method="POST">
+                                {{form.csrf_token}}
+                                {% for field in form if field.name != 'csrf_token'%}
+                                    <div class="form-floating">
+                                        {{ field(id=field.id, class="form-control" ~ (' is-invalid' if field.errors else ''), 
+                                        required=True, style=("font-size: 16px;")) }}
+                                        <label for="{{ field.id }}" {% if field.errors %} class="invalid-feedback" {% endif %}>{{ field.label.text }}</label>
+                                        {% for error in field.errors %}
+                                            <span class="invalid-feedback" style="font-size: 16px; color:red;">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                                <div>
+                                    남은 시간: <span id="countdown" style="font-size: 16px;" data-time="{{remain_time}}"></span> 초
                                 </div>
-                            {% endfor %}
-                            <div>
-                                남은 시간: <span id="countdown" style="font-size: 16px;" data-time="{{remain_time}}"></span> 초
-                            </div>
-                            <br/>
-                            <button class="btn btn-primary text-uppercase" id="submitButton" type="submit">인증하기</button>
-                        </form>
+                                <br/>
+                                <button id="submitButton" class="btn btn-primary text-uppercase" type="submit">인증하기</button>
+                            </form>
+                        </div>
                     {% else %}
-                        <p class="text text-danger font-weight-bold">이메일 인증이 필요합니다.</p>
-                        <form action="{{ url_for('auth.send_mail_otp') }}" method="POST">
-                            <button type="submit" class="btn btn-primary">인증 이메일 보내기</button>
-                        </form>
+                        <div id="otpSend">
+                            <p class="text text-danger font-weight-bold">이메일 인증이 필요합니다.</p>
+                            <form action="{{ url_for('auth.send_mail_otp') }}" method="POST">
+                                <button type="submit" class="btn btn-primary">인증 이메일 보내기</button>
+                            </form>
+                        </div>
                     {% endif %}
                 {% endif %}
                 <br />
                 <br />
-                <button onclick="onDeleteUser()" class="btn btn-danger" id="delete_button">탈퇴하기</button>
+                <button id="delete_button" onclick="onDeleteUser()" class="btn btn-danger">탈퇴하기</button>
             </p>
         </div>
     </div>

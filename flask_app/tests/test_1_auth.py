@@ -1,8 +1,8 @@
 import os
 import sys
+
 # 현재 스크립트의 부모 디렉터리를 상위로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from flask_login import login_user
 from bs4 import BeautifulSoup
 
 from blog.models import get_model
@@ -11,93 +11,111 @@ from tests.test_0_base import TestBase
 class AuthTest(TestBase):
     name = 'AUTH'
 
-    user = dict(
-        username='11111',
-        email='test1@example.com',
-        password='123456',
-        password_check='123456',
-    )
+    password = '123456'
 
-    def signup(self, user_num):
-        return self.test_client.post('/auth/sign-up', data=getattr(self, f'user{user_num}'))
+    # 매 시작 전 카테고리 추가
+    def setUp(self):
+        super().setUp()
+        self.signup()
+        self.login()
 
     '''
-    1. 회원 가입 기능 확인 
-        web 통해서 회원 가입
-        redirect = 302 code & db 유저 수 확인
-    '''
-    def test_1_signup_web(self):
-        response = self.test_client.post('/auth/sign-up', data=dict(
-            username=self.user['username'],
-            email=self.user['email'],
-            password=self.user['password'],
-            password_check=self.user['password_check'],
-        ))
-        self.assertEqual(response.status_code, 302) # 성공 시 redirect = code 302
-        self.assertEqual(get_model('user').count_all(), 1)     # 유저 수 확인
-
-    '''
-    2. 로그인 기능 확인
-        회원가입 하고 로그인 진행
-        회원가입 로그인 모두 redirect = 302 code 받으면 성공
+    1. 로그인 로그아웃 기능 확인
         nav 메뉴 확인(로그인/로그아웃 상태에 따라 nav 메뉴 다름)
     '''
-    def test_2_login(self):
-        # 1. 로그인 전에 Nav 에서 Login, Sign Up 버튼 있어야하고, New Post, Logout 없어야 함
+    def test_1_login_and_logout(self):
+        # 1. Nav 에서 Login, Sign Up 버튼 없어야 하고, New Post, Logout 있어야 함
         response = self.test_client.get('/home')
-        nav_before_login = BeautifulSoup(response.data, 'html.parser').nav
-
-        self.assertIn('Login', nav_before_login.text)
-        self.assertIn('Sign Up', nav_before_login.text)
-        self.assertNotIn('New Post', nav_before_login.text)
-        self.assertNotIn('Logout', nav_before_login.text)
-
-        # 2. 회원 가입 진행
-        user = get_model('user')(
-            username=self.user['username'],
-            email=self.user['email'],
-            password=self.user['password']
-        )
-        user.add_instance()
-
-        # 3. 로그인 진행
-        response = self.test_client.post('/auth/login', data=dict(
-                email=self.user['email'],
-                password=self.user['password'],
-            ), follow_redirects=True)
-
-        # 4. Nav 에서 Login, Sign Up 버튼 없어야 하고, New Post, Logout 있어야 함
         nav_after_login = BeautifulSoup(response.data, 'html.parser').nav
         self.assertNotIn('Login', nav_after_login.text)
         self.assertNotIn('Sign Up', nav_after_login.text)
         self.assertIn('New Post', nav_after_login.text)
         self.assertIn('Logout', nav_after_login.text)
     
+        # 2. 로그아웃 후에 Nav 에서 Login, Sign Up 버튼 있어야하고, New Post, Logout 없어야 함
+        self.logout()
+        response = self.test_client.get('/home')
+        nav_before_login = BeautifulSoup(response.data, 'html.parser').nav
+        self.assertIn('Login', nav_before_login.text)
+        self.assertIn('Sign Up', nav_before_login.text)
+        self.assertNotIn('New Post', nav_before_login.text)
+        self.assertNotIn('Logout', nav_before_login.text)
+
     '''
-    3. 로그아웃 기능 확인
-        회원가입 하고 로그인 -> 로그아웃 진행
-        회원가입 로그인 모두 redirect = 302 code 받으면 성공
-        nav 메뉴 확인(로그인/로그아웃 상태에 따라 nav 메뉴 다름)
+    2. 이메일 인증 기능 확인
+        mypage 접근 후 otpSend 확인
+        otp 이메일 보내고 otpInput 확인
+        otp 입력 후 after_auth_info 확인
     '''
-    def test_3_logout(self):
+    def test_2_email_auth(self):
+        # return True
+        # 1. mypage 접근. otpSend 있어야하고 otpInput 없어야함.
+        response = self.test_client.get('/auth/mypage')
+        mypage_before_otp = BeautifulSoup(response.data, 'html.parser').find(id='user_info')
+        self.assertIsNotNone(mypage_before_otp.find(id='otpSend'))
+        self.assertIsNone(mypage_before_otp.find(id='otpInput'))
 
-        # 1. 회원가입
-        user = get_model('user')(
-            username=self.user['username'],
-            email=self.user['email'],
-            password=self.user['password']
-        )
-        user.add_instance()
+        # 2. otp 보내고 리디렉션 확인, otpInput 있어야하고 otpSend 없어야함.
+        response = self.test_client.post('/auth/send-mail-otp', follow_redirects=True)
+        mypage_after_otp = BeautifulSoup(response.data, 'html.parser')
+        self.assertIsNone(mypage_after_otp.find(id='otpSend'))
+        self.assertIsNotNone(mypage_after_otp.find(id='otpInput'))
 
-        # 2. 로그인
-        login_user(user, remember=True)
+        # 3. 이메일 인증 후 after_auth_info 확인
+        self.user1.save_instance(create_permission=True)
+        response = self.test_client.get('/auth/mypage')
+        mypage_after_auth = BeautifulSoup(response.data, 'html.parser')
+        self.assertIsNone(mypage_after_auth.find(id='otpSend'))
+        self.assertIsNone(mypage_after_auth.find(id='otpInput'))
+        self.assertIsNotNone(mypage_after_auth.find(id='after_auth_info'))
 
-        # 3. 로그아웃
-        response = self.test_client.get('/auth/logout', follow_redirects=True)
+    '''
+    3. 운영자 계정 확인
+        운영자 X 접근 = 403 거부
+        운영자 O 접근 = 접근 가능
+        운영자 Post로 카테고리 생성
+        카테고리 페이지 접근 후 확인
+    '''
+    def test_3_make_category(self):
+        # 1. make-category 페이지 접근 = 권한 오류 403
+        response = self.test_client.get('/auth/make-category')
+        self.assertEqual(response.status_code, 403)
 
-        # 4. Nav 에서 Login, Sign Up 버튼 있어야하고, New Post, Logout 없어야 함
-        nav_after_logout = BeautifulSoup(response.data, 'html.parser').nav
-        self.assertIn('Login', nav_after_logout.text)
-        self.assertIn('Sign Up', nav_after_logout.text)
-        self.assertNotIn('New Post', nav_after_logout.text)
-        self.assertNotIn('Logout', nav_after_logout.text)
+        # 2. 권한 변경 후 확인
+        self.user1.save_instance(admin_check=True)
+        response = self.test_client.get('/auth/make-category')
+        self.assertEqual(response.status_code, 200)
+
+        # 3. 카테고리 추가 후 db에 적용 잘 됐는지 확인
+        response = self.test_client.post('/auth/make-category', data=dict(
+            name='category 1',
+        ))
+        self.assertEqual(get_model('category').get_instance_by_id(1).name, 'category 1')
+
+        # 4. category 페이지 접속했을 때 카테고리 목록이 잘 출력되는지 확인
+        response = self.test_client.get('/category')
+        category_list = BeautifulSoup(response.data, 'html.parser').find(id='category_list')
+        self.assertIn('category 1', category_list.text)
+
+    '''
+    4. 회원 탈퇴 기능
+        로그인 후 회원 탈퇴 버튼 확인
+        탈퇴 진행 후 로그인 시도
+    '''
+    def test_4_user_delete(self):
+        # 1. 회원 탈퇴 버튼 확인
+        response = self.test_client.get('/auth/mypage')
+        mypage = BeautifulSoup(response.data, 'html.parser').find(id='user_info')
+        self.assertIsNotNone(mypage.find(id='delete_button'))
+
+        # 2. 회원 탈퇴
+        response = self.test_client.post('/auth/user-delete')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['message'], 'success')
+
+        # 3. 로그인 확인, 실패 = 200 code
+        response = self.test_client.post('/auth/login', data=dict(
+            email=self.user1.email,
+            password=self.password,
+        ))
+        self.assertEqual(response.status_code, 200)

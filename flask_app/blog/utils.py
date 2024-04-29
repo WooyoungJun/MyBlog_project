@@ -1,5 +1,4 @@
 import requests
-import smtplib
 import time
 from urllib.parse import urlencode
 from flask import abort, flash, redirect, render_template, url_for, session, request, current_app
@@ -12,8 +11,7 @@ from random import randint
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.have_admin_check():
-            return abort(403)
+        if not current_user.have_admin_check(): return abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -29,7 +27,7 @@ def logout_required(f):
 def only_post_method(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if get_method(): abort(403)
+        if get_method(): return abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -37,9 +35,7 @@ def create_permission_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.have_create_permission():
-            error_msg('이메일 인증이 필요합니다.')
-            return redirect(url_for('views.home'))
+        if not current_user.have_create_permission(): return abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -47,15 +43,14 @@ def not_have_create_permission_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if current_user.have_permission(): 
+        if current_user.have_create_permission(): 
             error_msg('이미 인증된 사용자입니다.')
             return redirect(url_for('views.home'))
         return f(*args, **kwargs)
     return decorated_function
 
-def render_template_with_user(BASE_DIR, **context):
+def render_template_with_user(**context):
     context['user'] = current_user
-    context['template_name_or_list'] = BASE_DIR + context['template_name_or_list']
     return render_template(**context)
 
 # ------------------------------------------------- 소유자 확인, 폼 체크, 메세지 -------------------------------------------------
@@ -70,7 +65,9 @@ def post_method():
     return request.method == 'POST'
 
 def form_invalid(form):
-    return not form.validate_on_submit()
+    if not form.validate_on_submit():
+        error_msg('유효성 검사 실패.')
+        return True
 
 def form_valid(form):
     return form.validate_on_submit()
@@ -81,24 +78,41 @@ def success_msg(msg):
 def error_msg(msg):
     flash(msg, category="error")
 
-# ------------------------------------------------- google email 인증 관련 -------------------------------------------------
+from flask import abort
+def error(code):
+    abort(code)
 
-def smtp_setup():
-    smtp = smtplib.SMTP(host=current_app.config['MAIL_SERVER'], port=current_app.config['MAIL_PORT'])
+# ------------------------------------------------- google email 인증 관련 -------------------------------------------------
+def smtp_send_mail():
+    from smtplib import SMTP
+    smtp = SMTP(host=current_app.config['MAIL_SERVER'], port=current_app.config['MAIL_PORT'])
     smtp.starttls() # TLS 암호화 보안 연결 설정
     smtp.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
-    return smtp
 
-def smtp_send_mail(smtp):
     otp = str(randint(100000, 999999))
     msg = MIMEText(f'MyBlog 회원가입 \n인증번호를 입력하여 이메일 인증을 완료해 주세요.\n인증번호 :{otp}')
     msg['Subject'] = '[MyBlog 이메일 인증]'
     smtp.sendmail(current_app.config['MAIL_USERNAME'], current_user.email, msg.as_string())
-    return otp
-
-def save_session(otp):
+    smtp.quit()
+    
     session[f'otp_{current_user.email}'] = otp  # 세션에 인증번호 저장
     session[f'time_{current_user.email}'] = int(time.time()) + current_app.config['MAIL_LIMIT_TIME']  # 인증번호 제한 시간
+
+def delete_error_email():
+    from imaplib import IMAP4_SSL
+    imap = IMAP4_SSL('imap.gmail.com')
+    imap.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
+
+    imap.select('inbox')
+    status, email_ids = imap.search(None, '(FROM "mailer-daemon@googlemail.com")')
+    if status == 'OK':
+        email_ids = email_ids[0].split()
+        for email_id in email_ids:
+            imap.store(email_id, '+FLAGS', '\\Deleted')
+    imap.expunge() # deleted 플래그 모두 삭제
+
+    imap.close() # 세션 종료
+    imap.logout() # 연결 해제
 
 def session_update():
     session_otp = get_otp()

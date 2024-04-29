@@ -5,8 +5,9 @@ from flask_login import current_user
 from flask_wtf import FlaskForm
 from werkzeug.security import generate_password_hash
 from wtforms import BooleanField, StringField, SelectField
-from blog.forms import CommentForm, SignUpForm, PostForm
-from blog.models import get_model
+
+from .forms import CommentForm, SignUpForm, PostForm
+from .models import get_model
 
 class AdminBase(ModelView):
     column_formatters = {

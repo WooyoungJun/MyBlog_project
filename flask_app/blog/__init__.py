@@ -1,8 +1,8 @@
 from flask import Flask
-from flask_login import LoginManager
-from flask_admin import Admin
-from blog.admin_models import get_all_admin_models
-from .models import get_model, db, migrate
+
+from .utils import delete_error_email
+from .admin_models import get_all_admin_models
+from .models import get_model
 
 def create_app(config, mode):
     '''
@@ -14,17 +14,19 @@ def create_app(config, mode):
     app.config.from_object(config) # 환경변수 설정 코드
     app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
     app.config['mode'] = mode.lower()
-    db.init_app(app)
-    migrate.init_app(app, db)
-    with app.app_context():
-        # db.Model 상속한 모든 클래스 추적해서 테이블 생성
-        db.create_all()
+
+    # db, migrate init + 테이블 생성
+    from .models import db_migrate_setup
+    db_migrate_setup(app)
 
     # admin 페이지에 모델뷰 추가
     add_admin_view(app)
 
     # blueprint 등록 코드, url_prefix를 기본으로 함
     add_blueprint(app)
+
+    from .error import error_handler_setting
+    error_handler_setting(app)
 
     # jinja2 필터 등록
     app.jinja_env.filters['datetime'] = lambda x: x.strftime('%y.%m.%d %H:%M')
@@ -35,6 +37,10 @@ def create_app(config, mode):
     # create_user, update_all_model_instances 명령어 추가
     add_cli(app)
 
+    # 쌓인 오류 메세지 삭제
+    with app.app_context():
+        delete_error_email()
+
     # sqlalchemy 쿼리 로깅 확인용 
     # import logging
     # logging.basicConfig()
@@ -44,6 +50,8 @@ def create_app(config, mode):
 
 def add_admin_view(app):
     # admin 페이지에 모델뷰 추가
+    from flask_admin import Admin
+    from .models import db
     admin = Admin(app, name='MyBlog', template_mode='bootstrap3')
     for admin_model, model in get_all_admin_models():
         admin.add_view(admin_model(model, db.session))
@@ -53,10 +61,9 @@ def add_blueprint(app):
     app.register_blueprint(views, name='views')
     from .auth import auth
     app.register_blueprint(auth, name='auth', url_prefix='/auth')
-    from .error import error
-    app.register_blueprint(error, name='error')
 
 def set_login_manager(app):
+    from flask_login import LoginManager
     login_manager = LoginManager()
     login_manager.init_app(app) # app 연결
     login_manager.login_view = 'auth.login' # 로그인을 꼭 해야하는 페이지 접근 시 auth.login으로 리다이렉트 설정 
@@ -64,7 +71,7 @@ def set_login_manager(app):
     # login_required 실행 전 사용자 정보 조회 메소드
     @login_manager.user_loader
     def user_loader(user_id):
-        return db.session.get(get_model('user'), int(user_id))
+        return get_model('user').get_instance_by_id(int(user_id))
     
 def add_cli(app):
     from click import command               # 커맨드 라인 인터페이스 작성
@@ -90,8 +97,7 @@ def add_cli(app):
                 post_create_permission = post_create_permission,
                 admin_check = admin_check
             )
-            db.session.add(admin_user)
-            db.session.commit()
+            admin_user.add_instance()
             print(f"User created!\n{admin_user.id}: {admin_user.username}")
         except IntegrityError:
             # 빨간색으로 표시

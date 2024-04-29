@@ -3,9 +3,9 @@
 
 2. 테스트 코드 작성 경험 쌓기
 
-3. nginx + gunicorn + flask = docker-compose로 묶어서 배포하기 
+3. (nginx + gunicorn + flask)를 docker-compose로 묶어서 배포하기 
 
-4. CI/CD 적용
+4. CI/CD 적용(Github Actions)
 
 웹 개발에 대해 공부하면서, 지금까지 공부했던 내용들을 묶어서 하나의 과정으로 승화시키는 프로젝트가 필요하다고 느껴 이 프로젝트를 시작하게 되었습니다. 중간에 모르는 것은 채우고, 고민했던 부분은 공유하면서 진행하겠습니다.
 
@@ -28,7 +28,7 @@ ___
 - Flask-admin: 관리자 페이지를 간편하게 생성하고 관리할 수 있는 라이브러리
     - admin_models.py: 관리자 페이지 관리
 
-- auth.py: auth 하위에 login, logout, sign-up 엔드포인트 관리
+- auth.py: 사용자 회원가입, 로그인, 로그아웃, 이메일 인증 등 권한 관련 기능을 다루는 엔드포인트 관리
 
 - views.py: views 하위에 about-me, category, contact, post_read, post_write, posts-list 엔드포인트 관리
 
@@ -38,21 +38,29 @@ ___
 ---
 # 프로젝트 폴더 구조
 MyBlog_project
+* .github/workflows
+    * build-deploy.yml - CI/CD 스크립트 관리
 * flask_app
     * blog - 주요 기능 개발
-        * config - 각종 환경변수 관리(Secret key, db URI 관리 등)
-        * static - assets, css, js 폴더 + 파일들
-        * templates - html 템플릿
-    * __init__.py - blog 패키징 파일
-    * auth.py	- auth 엔드포인트 관리
-    * views.py - views 엔드포인트 관리
-    * forms.py - flask-wtf 폼 관리
-    * models.py - flask-sqlalchemy 모델 관리(스키마 관리)
+        * config - 각종 환경변수 관리(Secret key, db URI 관리 등) 폴더
+        * db - db 파일 저장 폴더
+        * static - assets, css, js 폴더
+        * templates - html 템플릿 폴더
+        * `__init__`.py - blog 패키징 파일
+        * admin_models.py - flask-admin 페이지를 위한 모델 관리
+        * auth.py	- auth 엔드포인트 관리
+            * 로그인, 로그아웃, 회원가입, 회원탈퇴, 내정보(이메일 인증), third-party 가입, 로그인
+        * views.py - views 엔드포인트 관리
+            * 
+        * error.py - 403, 404 등 에러 핸들러
+        * forms.py - flask-wtf 폼 관리
+        * models.py - flask-sqlalchemy 모델 관리(스키마 관리)
     * tests - 주요 테스트 개발
+        * test_0_base.py - TestBase 클래스 정의(setUpClass, tearDownClass 등)
+        * test_1_auth.py - auth 기능 테스트 (회원가입, 로그인, 로그아웃, 이메일 인증, 카테고리 생성, 회원 탈퇴)
+        * test_2_post.py - post 관련 기능 테스트 (post 생성, 수정, 삭제)
+        * test_3_comment.py - comment 관련 기능 테스트 (댓글 생성, 수정, 삭제)
         * test_config.py - 테스트 환경변수 관리
-        * test_base.py - TestBase 클래스 정의(setUpClass, tearDownClass 등)
-        * test_auth.py - auth 엔드포인트 + 기능 테스트 (db기능, 회원가입, 로그인, 로그아웃)
-        * test_post.py - post 관련 기능 테스트 (카테고리 생성, post 생성, 수정, 삭제)
         * test.py - 종합 테스트(기능 단위 or 통합 테스트)
     * .gitignore - git 추적 X 파일 관리
     * requirements.txt - 의존성 라이브러리 버전 관리

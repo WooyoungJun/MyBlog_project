@@ -7,11 +7,20 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import selectinload, joinedload
 
+from .utils import error_msg
+
 # 한국 시간대 오프셋(UTC+9)을 생성합니다.
 KST_offset = timezone(timedelta(hours=9))
 
 db = SQLAlchemy()
 migrate = Migrate()
+
+def db_migrate_setup(app):
+    db.init_app(app)
+    migrate.init_app(app, db)
+    with app.app_context():
+        # db.Model 상속한 모든 클래스 추적해서 테이블 생성
+        db.create_all()
 
 # relationship(관계 맺는 모델 이름, back_populates=연결 필드 이름)
 # Cascade = 1:N 관계에서 1쪽에 설정
@@ -34,44 +43,36 @@ migrate = Migrate()
 class BaseModel(db.Model):
     __abstract__ = True                                                             # 추상 클래스 설정
     id = db.Column(db.Integer, primary_key=True)                                    # primary key 설정
-
-    def add_instance(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def save_instance(self, **kwargs):
-        for key, value in kwargs.items():
-            if key in self.__table__.columns:
-                setattr(self, key, value)
-        db.session.commit()
-
-    def delete_instance(self):
-        db.session.delete(self)
-        db.session.commit()
-
-    def update_instance(self):
-        none_fields = [field for field in self.__class__.__table__.columns if getattr(self, field.name) is None]
-        for field in none_fields:
-            setattr(self, field.name, field.default.arg)
-        db.session.commit()
     
     @classmethod
     def get_instance_by_id(cls, id):
-        return db.session.get(cls, id)
+        instance = db.session.get(cls, id)
+        if not instance:
+            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        return instance
     
     @classmethod
     def get_instance_by_id_with(cls, id, *relationships):
         options = [joinedload(getattr(cls, attr)) for attr in relationships]
-        return db.session.get(cls, id, options=options)
+        instance = db.session.get(cls, id, options=options)
+        if not instance:
+            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        return instance
     
     @classmethod
     def get_instance(cls, **filter_conditions):
-        return db.session.query(cls).filter_by(**filter_conditions).first()
+        instance = db.session.query(cls).filter_by(**filter_conditions).first()
+        if not instance:
+            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        return instance
     
     @classmethod
     def get_instance_with(cls, *relationships, **filter_conditions):
         options = [selectinload(getattr(cls, attr)) for attr in relationships]
-        return db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
+        instance =  db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
+        if not instance:
+            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        return instance
 
     @classmethod
     def count(cls, **filter_conditions):
@@ -96,14 +97,45 @@ class BaseModel(db.Model):
         or 조건으로 묶어서 하나라도 존재하면 첫번째 객체 반환
         중복 없으면 None 반환
         '''
-        conditions = [func.upper(getattr(cls, key)) == func.upper(value) 
+        conditions = [func.lower(getattr(cls, key)) == func.lower(value) 
             if isinstance(getattr(cls, key).type, String) 
             else getattr(cls, key) == value 
             for key, value in kwargs.items()
         ]
-        
-        return db.session.query(cls).filter(or_(*conditions)).first()
+        instance = db.session.query(cls).filter(or_(*conditions)).first()
+        if instance:
+            error_msg('중복된 정보가 존재합니다')
+            return True
+
+    def add_instance(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def save_instance(self, **kwargs):
+        for key, value in kwargs.items():
+            if key in self.__table__.columns:
+                setattr(self, key, value)
+        db.session.commit()
+
+    def delete_instance(self):
+        db.session.delete(self)
+        db.session.commit()
+
+    def update_instance(self):
+        none_fields = [field for field in self.__class__.__table__.columns if getattr(self, field.name) is None]
+        for field in none_fields:
+            setattr(self, field.name, field.default.arg)
+        db.session.commit()
     
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    
+    def copy(self):
+        new_item = self.__class__()
+        for column in self.__table__.columns:
+            setattr(new_item, column.name, getattr(self, column.name))
+        return new_item
+
     def __repr__(self):
         return f'{self.__class__.__name__} {self.id}: '
 
@@ -133,9 +165,9 @@ class User(BaseModel, UserMixin):
         email = email.strip().replace(' ', '')
         user = db.session.query(cls).filter_by(email=email).first()
         if user:
-            if not check_password_hash(password, user.password): return user, 'success'
-            else: return None, '비밀번호가 틀렸습니다.'
-        else: return None, '가입되지 않은 이메일입니다.'
+            if not check_password_hash(password, user.password): return user
+            else: return error_msg('비밀번호가 틀렸습니다.')
+        else: return error_msg('가입되지 않은 이메일입니다.')
     
     def have_create_permission(self):
         return self.create_permission
@@ -173,9 +205,6 @@ class Category(BaseModel):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
     name = db.Column(db.String(150), unique=True)                                                   # 메뉴 이름       
     category_posts = db.relationship('Post', back_populates='category', cascade='delete, delete-orphan', lazy='dynamic')             
-
-    def __init__(self, name):
-        self.name = name.upper()
 
     def __repr__(self):
         return super().__repr__() + f'{self.name}'   
