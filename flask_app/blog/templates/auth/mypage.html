@@ -67,7 +67,14 @@ function onDeleteUser(){
                     </div>
                 {% else %}
                     <br/><br/>
-                    {% if otp %}
+                    {% if not otp %}
+                        <div id="otpSend">
+                            <p class="text text-danger font-weight-bold">이메일 인증이 필요합니다.</p>
+                            <form action="{{ url_for('auth.send_mail_otp') }}">
+                                <button type="submit" class="btn btn-primary">인증 이메일 보내기</button>
+                            </form>
+                        </div>
+                    {% else %}
                         <div id="otpInput">
                             <form id="otpForm" method="POST">
                                 {{form.csrf_token}}
@@ -86,13 +93,6 @@ function onDeleteUser(){
                                 </div>
                                 <br/>
                                 <button id="submitButton" class="btn btn-primary text-uppercase" type="submit">인증하기</button>
-                            </form>
-                        </div>
-                    {% else %}
-                        <div id="otpSend">
-                            <p class="text text-danger font-weight-bold">이메일 인증이 필요합니다.</p>
-                            <form action="{{ url_for('auth.send_mail_otp') }}" method="POST">
-                                <button type="submit" class="btn btn-primary">인증 이메일 보내기</button>
                             </form>
                         </div>
                     {% endif %}

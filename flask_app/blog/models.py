@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, event, or_, func
+from sqlalchemy import String, or_, func
+from sqlalchemy.event import listens_for
 from sqlalchemy.orm import object_session
 from flask_login import UserMixin
 from flask_migrate import Migrate
@@ -242,7 +243,7 @@ def get_model(arg):
     }
     return models[arg]
 
-@event.listens_for(db.session, 'before_flush')
+@listens_for(db.session, 'before_flush')
 def after_insert_and_delete(session, flush_context, instances):
     for obj in session.new | session.deleted:
         if isinstance(obj, get_model('comment')):

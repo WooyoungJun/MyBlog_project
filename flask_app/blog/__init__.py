@@ -1,6 +1,5 @@
 from flask import Flask
 
-from .utils import delete_error_email
 from .admin_models import get_all_admin_models
 from .models import get_model
 
@@ -38,6 +37,7 @@ def create_app(config, mode):
     add_cli(app)
 
     # 쌓인 오류 메세지 삭제
+    from .email import delete_error_email
     with app.app_context():
         delete_error_email()
 

@@ -114,7 +114,7 @@ class CommentTest(TestBase):
         get_model('comment')(content='test comment', post_id=1, author_id=1).add_instance()
         self.logout()
         self.login(2)
-        self.test_client.post('/comment-delete/1') # 삭제 요청
+        self.test_client.delete('/comment-delete/1') # 삭제 요청
         response = self.test_client.get('post/1')
         post_response = BeautifulSoup(response.data, 'html.parser')
         self.assertIsNotNone(post_response.find(id='commentList')) # commentWrapper 있어야 함

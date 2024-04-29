@@ -1,15 +1,17 @@
 from secrets import token_hex
-from flask import Blueprint, jsonify, redirect, url_for
+from flask import Blueprint, current_app, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
 from .utils import (
-    admin_required, logout_required, only_post_method,
+    admin_required, logout_required, only_delete_method,
     not_have_create_permission_required, render_template_with_user,                 # 데코레이터 함수
 
     form_valid, form_invalid, success_msg, error_msg, get_method, post_method,      # 기타
-
-    smtp_send_mail, session_update, delete_session, get_otp, get_remain_time,       # email 인증
-
+)
+from .email import (
+    send_mail, session_update, delete_session, get_otp, get_remain_time,       # email 인증
+)
+from .third_party import (
     make_auth_url, get_access_token, get_user_info                                  # third-party 인증
 )
 from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm
@@ -71,8 +73,8 @@ def sign_up():
     success_msg('회원가입 완료!')
     return redirect(url_for('views.home'))
 
-@auth.route('/user-delete', methods=['POST'])
-@only_post_method
+@auth.route('/user-delete', methods=['DELETE'])
+@only_delete_method
 @login_required
 def user_delete():
     user = get_model('user').get_instance_by_id(current_user.id)
@@ -109,16 +111,14 @@ def mypage():
     success_msg('이메일 인증 완료')
     return render_template_auth("mypage.html")
 
-@auth.route('/send-mail-otp', methods=['POST'])
-@only_post_method
+@auth.route('/send-mail-otp')
 @not_have_create_permission_required
 def send_mail_otp():
     try:
-        smtp_send_mail()
+        send_mail()
         success_msg('인증번호 전송 완료')
     except Exception as e:
         error_msg(str(e))
-
     return redirect(url_for('auth.mypage'))
 
 @auth.route("/make-category", methods=['GET', 'POST'])

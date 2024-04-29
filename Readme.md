@@ -48,16 +48,19 @@ MyBlog_project
         * templates - html 템플릿 폴더
         * `__init__`.py - blog 패키징 파일
         * admin_models.py - flask-admin 페이지를 위한 모델 관리
-        * auth.py	- auth 엔드포인트 관리
+        * auth.py - auth 엔드포인트 관리
             * 로그인, 로그아웃, 회원가입, 회원탈퇴, 내정보(이메일 인증), third-party 가입, 로그인
+            * email.py - email 인증 관련 메소드 관리
+            * third_party.py - third-party 회원가입, 로그인 메소드 관리
         * views.py - views 엔드포인트 관리
-            * 
+            * home, post, comment 관련 엔드포인트 관리
         * error.py - 403, 404 등 에러 핸들러
         * forms.py - flask-wtf 폼 관리
         * models.py - flask-sqlalchemy 모델 관리(스키마 관리)
+        * utils.py - decorator 메소드, 기타 자주 사용하는 메소드 관리
     * tests - 주요 테스트 개발
         * test_0_base.py - TestBase 클래스 정의(setUpClass, tearDownClass 등)
-        * test_1_auth.py - auth 기능 테스트 (회원가입, 로그인, 로그아웃, 이메일 인증, 카테고리 생성, 회원 탈퇴)
+        * test_1_auth.py - auth 기능 테스트 (회원 가입, 로그인, 로그아웃, 이메일 인증, 카테고리 생성, 회원 탈퇴)
         * test_2_post.py - post 관련 기능 테스트 (post 생성, 수정, 삭제)
         * test_3_comment.py - comment 관련 기능 테스트 (댓글 생성, 수정, 삭제)
         * test_config.py - 테스트 환경변수 관리
@@ -70,6 +73,12 @@ MyBlog_project
     * nginx.conf - nginx 웹 서버의 기본 config 파일(worker_processes, http, log 설정 등)
     * default.conf - 가상 호스트 config 파일(listen 포트, server_name, proxy_pass 설정 등)
     * Dockerfile - nginx server DockerImage 생성을 위한 스크립트 파일
-* docker-compose.yml - 
-* run_docker.sh
+* docker-compose.yml - nginx + gunicorn + flask 컨테이너 통합
+* run_docker.sh - docker 실행 및 db migration & update
 * Readme.md - 프로젝트 소개
+
+---
+# 프로젝트 issues
+
+### auth.py
+* 

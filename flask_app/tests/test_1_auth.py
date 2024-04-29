@@ -109,7 +109,7 @@ class AuthTest(TestBase):
         self.assertIsNotNone(mypage.find(id='delete_button'))
 
         # 2. 회원 탈퇴
-        response = self.test_client.post('/auth/user-delete')
+        response = self.test_client.delete('/auth/user-delete')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
 

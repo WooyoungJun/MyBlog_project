@@ -109,7 +109,7 @@ class PostTest(TestBase):
     '''
     def test_3_delete_post(self):
         # 1. 포스트 삭제 요청 전송 후 확인(성공 = 200 code)
-        response = self.test_client.post('/post-delete/1')
+        response = self.test_client.delete('/post-delete/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
 

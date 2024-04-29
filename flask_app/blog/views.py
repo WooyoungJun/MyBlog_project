@@ -4,9 +4,11 @@ from flask_login import current_user
 from .forms import CommentForm, ContactForm, PostForm
 from .models import get_model
 from .utils import (
-    only_post_method, render_template_with_user, create_permission_required,            # 데코레이터 함수
+    only_delete_method, only_post_method, 
+    render_template_with_user, create_permission_required,          # 데코레이터 함수
 
-    get_method, post_method, form_invalid, form_valid, success_msg, is_owner, error     # 기타
+    get_method, post_method, form_invalid, form_valid, 
+    success_msg, is_owner, error                                    # 기타
 )
 
 views = Blueprint('views', __name__)
@@ -158,8 +160,8 @@ def post_edit(post_id):
     success_msg('Post 수정 완료!')
     return redirect(url_for('views.post', post_id=post_id))
 
-@views.route('/post-delete/<int:post_id>', methods=['POST'])
-@only_post_method
+@views.route('/post-delete/<int:post_id>', methods=['DELETE'])
+@only_delete_method
 @create_permission_required
 def post_delete(post_id):
     # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
@@ -211,8 +213,8 @@ def comment_edit(comment_id):
     return redirect(url_for('views.post', post_id=comment.post_id))
     
 
-@views.route('/comment-delete/<int:comment_id>', methods=['POST'])
-@only_post_method
+@views.route('/comment-delete/<int:comment_id>', methods=['DELETE'])
+@only_delete_method
 @create_permission_required
 def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
