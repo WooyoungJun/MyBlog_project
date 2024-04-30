@@ -6,7 +6,9 @@ from flask_wtf import FlaskForm
 from werkzeug.security import generate_password_hash
 from wtforms import BooleanField, StringField, SelectField
 
+
 from .forms import CommentForm, SignUpForm, PostForm
+from .utils import error_msg
 from .models import get_model
 
 class AdminBase(ModelView):
@@ -46,6 +48,12 @@ class UserAdmin(AdminBase):
         model.posts_count = model.user_posts.count()
         model.comments_count = model.user_comments.count()
         super().on_model_change(form, model, is_created)
+    
+    def delete_model(self, model):
+        if model.id == current_user.id:
+            error_msg('자신의 계정은 삭제할 수 없습니다.')
+            return
+        super().delete_model(model)
 
 class PostAdmin(AdminBase):
     # 1. 표시 할 열 설정
