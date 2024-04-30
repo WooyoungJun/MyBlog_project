@@ -36,7 +36,6 @@ def set_domain_config(app):
         config[f'{domain}_TOKEN_URI'] = client_secret_file['token_uri']
         
         config[f'{domain}_SCOPE'] = client_secret_file['scope']
-        config[f'{domain}_USERINFO_URI'] = client_secret_file['userinfo_uri']
 
 def make_auth_url_and_set(app):
     config = app.config
