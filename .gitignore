@@ -4,9 +4,10 @@ venv/
 # config 파일
 production.py
 
-# test.py 파일
-tests/
-test.py
+# test.py 파일 
+# git update-index --skip-worktree tests/test.py = 추적 X
+# git update-index --no-skip-worktree tests/test.py = 추적 O
+test_secret.py
 
 # sqlite3 db
 db.sqlite3
@@ -14,6 +15,9 @@ db.sqlite3
 
 # migrations 폴더 제외
 migrations/
+
+# google OAuth2 client secret key 제외
+google_json.json
 
 # 컴파일된 모듈의 캐시 디렉토리 무시
 # .pyc, .pyo, .pyd 무시

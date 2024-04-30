@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/views/post_read.html -->
 {% extends "base.html" %}
 
 {% block title %} MyBlog - Post {{post.id}} {% endblock %}
@@ -11,14 +12,14 @@
                 <div class="post-heading">
                     <div id="title" name="title"><h2>{{post.title}}</h2></div>
                     <span class="meta">
-                        <div id="author" name="author"><p>Post Author: <a href="#!">{{post.user.username}}</a></p></div>
-                        <div id="category" name="category"><p>Category: <a href="#!">{{post.category.name}}</a></p></div>
+                        <div id="author" name="author_{{post.author_id}}"><p>Post Author: <a href="{{url_for('views.user_posts', user_id=post.author_id)}}">{{post.user.username}}</a></p></div>
+                        <div id="category" name="category_{{post.category_id}}"><p>Category: <a href="{{url_for('views.posts_list', category_id=post.category_id)}}">{{post.category.name}}</a></p></div>
                         <p>Post created at : {{post.date_created | datetime}}</p>
                         {% if user.id == post.user.id %}
                         <button class="btn btn-info" id="edit_button">
                             <a href="{{url_for('views.post_edit', post_id=post.id)}}">Edit</a>
                         </button>
-                        <button data_post_id="{{post.id}}" onclick="onDeletePost(this)" class="btn btn-danger" id="delete_button">Delete</button>
+                        <button onclick="onDeletePost()" class="btn btn-danger" id="delete_button">Delete</button>
                         {% endif %}
                     </span>
                     <span class="subheading"></span>
@@ -29,12 +30,11 @@
 </header>
 
 <script>
-    function onDeletePost(button){
+    function onDeletePost(){
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
-            // 확인을 클릭한 경우에만 요청 보내기
-            let postId = button.getAttribute('data_post_id');
-            fetch('/post-delete/' + postId, {method:"GET"})
+            let postId = document.getElementById('post_data').getAttribute('data_post_id');
+            fetch('/post-delete/' + postId, {method:"POST"})
             .then(response => {
                 if (response.status === 200){
                     window.location.href = '/'
@@ -45,9 +45,8 @@
     function onDeleteComment(button){
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
-            // 확인을 클릭한 경우에만 요청 보내기
             let commentId = button.getAttribute('data_comment_id');
-            fetch('/comment-delete/' + commentId, {method:"GET"})
+            fetch('/comment-delete/' + commentId, {method:"POST"})
             .then(response => {
                 window.location.reload();
                 if (response.status === 200){
@@ -60,6 +59,8 @@
 {% endblock %}
 
 {% block content %}
+<!-- data 태그 -->
+<div id="post_data" data_post_id="{{post.id}}"></div>
 <!-- 본문 -->
 <article class="mb-4">
     <div class="container px-4 px-lg-5">
@@ -71,7 +72,7 @@
     </div>
 </article>
 <!--comment -->
-<section class="mb-5" style="max-width: 60%; margin:0 auto">
+<section class="mb-5" style="max-width: 90%; margin:0 auto">
     <div class="card bg-light">
         <div class="card-body" id="commentWrapper">
             <!-- Comment form-->
@@ -85,6 +86,7 @@
                     </button>
                 </div>
             </form>
+            <!-- Comment List -->
             {% if not comments %}
                 <div id="emptyComment" style="text-align: center;">댓글이 없습니다.</div>
             {% else %}
@@ -92,15 +94,15 @@
                     <div id="commentList">
                         <!-- Single comment-->
                         <div class="row border-bottom">
-                            <div class="col-md-2" style="margin:0 0; font-size: 16px; border-right:1px solid;">
+                            <div class="col-3" style="margin:0 0; font-size: 14px; border-right:1px solid;">
                                 <p style="margin:0 0"> {{comment.user.username}}</p>
                                 <p style="margin:0 0">{{comment.date_created | datetime}}</p>
                             </div>
-                            <div class="col-md-10" style="margin:0 0; font-size: 16px;">
+                            <div class="col-9" style="margin:0 0; font-size: 16px;">
                                 <div class="row">
-                                    <p class="col-10" style="margin:0 0">{{comment.content}}</p>
                                     {% if current_user.id==comment.author_id %}
-                                        <p id="editAndDeleteButton" class="col-2 d-flex justify-content-center align-items-center" style="margin: 6px 0px">
+                                        <p class="col-9" style="margin:0 0">{{comment.content}}</p>
+                                        <p id="editAndDeleteButton" class="col-3 d-flex justify-content-center align-items-center" style="margin: 6px 0px">
                                             <button class="btn btn-secondary" style="padding: 6px;" data-bs-toggle="modal" data-bs-target="#editCommentModal{{ comment.id }}">
                                                 <i class="fa-solid fa-pencil"></i>
                                             </button>
@@ -108,7 +110,10 @@
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         </p>
+                                    {% else %}
+                                        <p class="col" style="margin:0 0">{{comment.content}}</p>
                                     {% endif %}
+
                                 </div>
                             </div>
                         </div>
@@ -121,7 +126,7 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Comment Edit</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', post_id=post.id, comment_id=comment.id) }}">
+                                    <form method="POST" class="form-control" action="{{ url_for('views.comment_edit', comment_id=comment.id) }}">
                                         {{ form.csrf_token }}
                                         <div class="modal-body">
                                             <input id="commentContent" type="text" class="form-control" name="content" value="{{ comment.content }}"/>

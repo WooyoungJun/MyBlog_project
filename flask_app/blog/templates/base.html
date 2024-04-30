@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/base.html -->
 <!DOCTYPE html>
 <html lang="ko">
     <head>
@@ -38,15 +39,19 @@
 
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.home')}}">Home</a></li>
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.about_me')}}">About Me</a></li>
-                        <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.contact')}}">Contact</a></li>
                         <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.category')}}">Category</a></li>
-
+                        
                         <!-- 로그인 상태 X일 때 -->
                         {% if not user.is_authenticated %}
-                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.login')}}">Login</a></li>
-                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.sign_up')}}">Sign Up</a></li>
+                        <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.login')}}">Login</a></li>
+                        <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.signup')}}">Sign Up</a></li>
                         {% else %}
+                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.contact')}}">Contact</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.post_create')}}">New Post</a></li>
+                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.mypage')}}">My Page</a></li>
+                            {% if user.have_admin_check() %}
+                                <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.make_category')}}">Make Category</a></li>
+                            {% endif %} 
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" style="color:red" href="{{url_for('auth.logout')}}">Logout</a></li>
                         {% endif %} 
 
@@ -58,25 +63,27 @@
         <!-- 각 페이지마다 변경 -->
         {% block header %}{% endblock %}
 
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <!-- 에러일 경우 -->
-                    {% if category == "error" %}
-                        <div class="alert alert-danger alert-dismissable fade show" role="alert" style="text-align: center">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    <!-- 성공일 경우 -->
-                    {% else %}
-                        <div class="alert alert-success alert-dismissable fade show" role="alert" style="text-align: center">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <div class="log-wrapper">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <!-- 에러일 경우 -->
+                        {% if category == "error" %}
+                            <div class="alert alert-danger alert-dismissable fade show" role="alert" style="text-align: center">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        <!-- 성공일 경우 -->
+                        {% else %}
+                            <div class="alert alert-success alert-dismissable fade show" role="alert" style="text-align: center">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
         
         <!-- 각 페이지마다 변경 -->
         <div class="content-wrapper">
@@ -90,26 +97,8 @@
                     <div class="col-md-10 col-lg-8 col-xl-7">
                         <ul class="list-inline text-center">
                             <li class="list-inline-item">
-                                <!-- 트위터 링크 -->
-                                <a href="#!">
-                                    <span class="fa-stack fa-lg">
-                                        <i class="fas fa-circle fa-stack-2x"></i>
-                                        <i class="fab fa-twitter fa-stack-1x fa-inverse"></i>
-                                    </span>
-                                </a>
-                            </li>
-                            <li class="list-inline-item">
-                                <!-- 페이스북 링크 -->
-                                <a href="#!">
-                                    <span class="fa-stack fa-lg">
-                                        <i class="fas fa-circle fa-stack-2x"></i>
-                                        <i class="fab fa-facebook-f fa-stack-1x fa-inverse"></i>
-                                    </span>
-                                </a>
-                            </li>
-                            <li class="list-inline-item">
                                 <!-- github 링크 -->
-                                <a href="#!">
+                                <a href="https://github.com/WooyoungJun">
                                     <span class="fa-stack fa-lg">
                                         <i class="fas fa-circle fa-stack-2x"></i>
                                         <i class="fab fa-github fa-stack-1x fa-inverse"></i>

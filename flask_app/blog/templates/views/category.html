@@ -1,3 +1,4 @@
+<!-- flask_app/blog/templates/views/category.html -->
 {% extends "base.html" %}
 
 {% block title %} MyBlog - All Category {% endblock %}
@@ -22,7 +23,7 @@
     <div class="row gx-4 gx-lg-5 justify-content-center">
         <div class="col-md-10 col-lg-8 col-xl-7" id="categories">
             {% for category in categories %}
-                <div class="category_post_preview">
+                <div id="category_list" class="category_post_preview">
                     <a href="{{url_for('views.posts_list', category_id=category.id)}}">
                         <h2 class="category_name">{{ category.name }}</h2>
                     </a>

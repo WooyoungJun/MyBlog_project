@@ -1,0 +1,107 @@
+<!-- flask_app/blog/templates/auth/mypage.html -->
+{% extends "base.html" %}
+
+{% block title %} MyBlog - MyPage {% endblock %}
+
+{% block header %}
+<header class="masthead" style="background-image: url('../static/assets/img/about-bg.jpg')">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="site-heading">
+                    <h2>Current User: {{user.username}}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let countdownElement = document.getElementById('countdown');
+    if (!countdownElement) return;
+
+    let remain_time = countdownElement.dataset.time;
+    if (!remain_time) window.location.reload();
+
+    // 1초씩 감소
+    function countdown() {
+        document.getElementById('countdown').textContent = remain_time;
+        remain_time--; 
+
+        if (remain_time < 0) {
+            window.location.reload();
+        } else {
+            setTimeout(countdown, 1000);
+        }
+    }
+    if (remain_time) {
+        countdown(); 
+    }
+});
+
+function onDeleteUser(){
+    let confirm = window.confirm('정말 탈퇴하시겠습니까?');
+    if (confirm) {
+        fetch('/auth/user-delete', {method:"POST"})
+        .then(response => {
+            if (response.status === 200){
+                window.location.href = '/'
+            }
+        })
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<section class="about-section text-center" style="margin: 24px;">
+    <div class="row">
+        <div id="user_info" class="col-md-6 mx-auto">
+            <p class="text">
+                <b>Name:</b> {{user.username}} <br>
+                <b>Email:</b> {{user.email}} <br>
+                {% if user.have_create_permission() %}
+                    <div id="after_auth_info">
+                        <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
+                        <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
+                    </div>
+                {% else %}
+                    <br/><br/>
+                    {% if not otp %}
+                        <div id="otpSend">
+                            <p class="text text-danger font-weight-bold">이메일 인증이 필요합니다.</p>
+                            <form action="{{ url_for('auth.send_mail_otp') }}">
+                                <button type="submit" class="btn btn-primary">인증 이메일 보내기</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <div id="otpInput">
+                            <form id="otpForm" method="POST">
+                                {{form.csrf_token}}
+                                {% for field in form if field.name != 'csrf_token'%}
+                                    <div class="form-floating">
+                                        {{ field(id=field.id, class="form-control" ~ (' is-invalid' if field.errors else ''), 
+                                        required=True, style=("font-size: 16px;")) }}
+                                        <label for="{{ field.id }}" {% if field.errors %} class="invalid-feedback" {% endif %}>{{ field.label.text }}</label>
+                                        {% for error in field.errors %}
+                                            <span class="invalid-feedback" style="font-size: 16px; color:red;">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                                <div>
+                                    남은 시간: <span id="countdown" style="font-size: 16px;" data-time="{{remain_time}}"></span> 초
+                                </div>
+                                <br/>
+                                <button id="submitButton" class="btn btn-primary text-uppercase" type="submit">인증하기</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                {% endif %}
+                <br />
+                <br />
+                <button id="delete_button" onclick="onDeleteUser()" class="btn btn-danger">탈퇴하기</button>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
