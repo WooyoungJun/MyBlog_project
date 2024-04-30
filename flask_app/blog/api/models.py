@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import selectinload, joinedload
 
 from .utils import error_msg
+from os.path import exists
 
 # 한국 시간대 오프셋(UTC+9)을 생성합니다.
 KST_offset = timezone(timedelta(hours=9))
@@ -89,22 +90,38 @@ class BaseModel(db.Model):
     def get_all_with(cls, *relationships, **filter_conditions):
         options = [selectinload(getattr(cls, attr)) for attr in relationships]
         return db.session.query(cls).filter_by(**filter_conditions).options(*options).all() 
-    
+
+    @classmethod
+    def is_in_model(cls, **filter_conditions):
+        '''
+        존재하면 True, X면 False 반환
+        '''
+        return db.session.query(cls).filter_by(**filter_conditions).scalar() is not None
+
     @classmethod
     def duplicate_check(cls, **kwargs):
         '''
-        or 조건으로 묶어서 하나라도 존재하면 첫번째 객체 반환
-        중복 없으면 None 반환
+        or 조건으로 묶어서 하나라도 존재하면 
+        해당 필드 명시하고, True 반환
+        중복 없으면 False 반환
         '''
         conditions = [func.lower(getattr(cls, key)) == func.lower(value) 
             if isinstance(getattr(cls, key).type, String) 
             else getattr(cls, key) == value 
             for key, value in kwargs.items()
         ]
-        instance = db.session.query(cls).filter(or_(*conditions)).first()
-        if instance:
-            error_msg('중복된 정보가 존재합니다')
+        instances = db.session.query(cls).filter(or_(*conditions)).all()
+
+        duplicate_fields = set()
+        for instance in instances:
+            for key, value in kwargs.items():
+                if getattr(instance, key) == value:
+                    duplicate_fields.add(key)
+
+        if duplicate_fields:
+            error_msg('중복된 정보가 존재합니다: {}'.format(', '.join(duplicate_fields)))
             return True
+        return False
 
     def add_instance(self):
         db.session.add(self)

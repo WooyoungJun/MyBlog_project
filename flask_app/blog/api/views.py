@@ -19,19 +19,19 @@ def render_template_views(template_name_or_list, **context):
     return render_template_with_user(**context)
 
 # ------------------------------------------------------------ posts_list 출력 페이지 ------------------------------------------------------------
-@views.route("/")
-@views.route("/home")
+@views.route('/')
+@views.route('/home')
 def home():
     # 쿼리 최대 4번 = posts 3번 + user 1번
     posts = get_model('post').get_all_with('user', 'category')
     return render_template_views(
-        "posts_list.html", 
+        'posts_list.html', 
         posts=posts, 
         type='home',
         category_name='all',
     )
 
-@views.route("/user_posts/<int:user_id>")
+@views.route('/user_posts/<int:user_id>')
 def user_posts(user_id):
     # 쿼리 최대 4번 = selected_user 1번 + user_posts 2번 + user 1번
     selected_user = get_model('user').get_instance_by_id(user_id)
@@ -39,7 +39,7 @@ def user_posts(user_id):
 
     user_posts = get_model('post').get_all_with('category', author_id=user_id)
     return render_template_views(
-        "posts_list.html", 
+        'posts_list.html', 
         posts=user_posts, 
         type='user_posts',
         selected_user=selected_user,
@@ -50,11 +50,11 @@ def category():
     # 쿼리 최대 2번 = category 1번 + user 1번
     categories = get_model('category').get_all()
     return render_template_views(
-        "category.html", 
+        'category.html', 
         categories=categories,
     )
 
-@views.route("/posts-list/<int:category_id>")
+@views.route('/posts-list/<int:category_id>')
 def posts_list(category_id):
     # 쿼리 최대 4번 = selected_category 1번 + category_posts 2번 + user 1번
     selected_category = get_model('category').get_instance_by_id(category_id)
@@ -62,18 +62,18 @@ def posts_list(category_id):
 
     category_posts = get_model('post').get_all_with('user', 'category', category_id=category_id)
     return render_template_views(
-        "posts_list.html", 
+        'posts_list.html', 
         posts=category_posts, 
         type='category_posts',
         category_name=selected_category.name,
     )
 
 # ------------------------------------------------------------ about-me & contact 페이지 ------------------------------------------------------------
-@views.route("/about-me")
+@views.route('/about-me')
 def about_me():
-    return render_template_views("about_me.html")
+    return render_template_views('about_me.html')
     
-@views.route("/contact", methods=['GET', 'POST'])
+@views.route('/contact', methods=['GET', 'POST'])
 @create_permission_required
 def contact():
     form = ContactForm()
@@ -86,7 +86,7 @@ def contact():
         success_msg('메세지 전송이 완료되었습니다.')
         form.content.data = ''
 
-    return render_template_views("contact.html", form=form)
+    return render_template_views('contact.html', form=form)
     
 # ------------------------------------------------------------ post 관련 페이지 ------------------------------------------------------------
 @views.route('/post/<int:post_id>')
@@ -99,7 +99,7 @@ def post(post_id):
     
     post_comments = get_model('comment').get_all_with('user', post_id=post_id)
     return render_template_views(
-        "post_read.html", 
+        'post_read.html', 
         post=post,
         form=form,
         comments=post_comments,
@@ -115,7 +115,7 @@ def post_create():
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     if get_method() or form_invalid(form):
         return render_template_views(
-            "post_write.html", 
+            'post_write.html', 
             form=form, 
             type='Create',
         )
@@ -135,7 +135,7 @@ def post_edit(post_id):
     form = PostForm()
     params = {
         'form':form, 
-        'type':"Edit",
+        'type':'Edit',
         'post_id':post_id,
     }
 
@@ -148,9 +148,9 @@ def post_edit(post_id):
 
     if get_method():
         form.set_form_from_obj(post)
-        return render_template_views("post_write.html", **params)
+        return render_template_views('post_write.html', **params)
     
-    if form_invalid(form): return render_template_views("post_write.html", **params)
+    if form_invalid(form): return render_template_views('post_write.html', **params)
     
     post.save_instance(
         title=form.title.data, 

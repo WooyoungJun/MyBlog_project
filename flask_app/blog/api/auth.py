@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
 from .utils import (
-    admin_required, logout_required, only_delete_method,
+    admin_required, logout_required, only_delete_method, only_post_method,
     not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
 
     form_valid, form_invalid, success_msg, error_msg, get_method, post_method,          # 기타
@@ -12,9 +12,10 @@ from .email import (
     send_mail, session_update, delete_session, get_otp, get_remain_time,                # email 인증
 )
 from .third_party import (
-    domain_match, get_auth_url, get_access_token, get_domain_num, get_user_info, not_exist_domain     # third-party 인증
+    get_auth_url, get_access_token, get_domain_num, get_user_info, 
+    make_name, not_exist_domain, domain_match                                           # third-party 인증
 )
-from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm
+from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm, UserInfoForm
 from .models import get_model
 
 auth = Blueprint('auth', __name__)
@@ -93,23 +94,26 @@ def mypage():
     form = OtpForm()
     session_otp = get_otp()
     remain_time = get_remain_time()
+    user_info_form = UserInfoForm()
+    user_info_form.set_form_from_obj(current_user)
     params = {
         'otp':session_otp,
         'remain_time':remain_time,
         'form':form,
+        'user_info_form':user_info_form,
     }
     
-    if get_method(): return render_template_auth("mypage.html", **params)
-    if form_invalid(form): return render_template_auth("mypage.html", **params)
+    if get_method(): return render_template_auth('mypage.html', **params)
+    if form_invalid(form): return render_template_auth('mypage.html', **params)
 
     if form.otp.data != session_otp:
         error_msg('otp 비밀번호가 일치하지 않습니다.')
-        return render_template_auth("mypage.html", **params)
+        return render_template_auth('mypage.html', **params)
     
     delete_session()
     current_user.save_instance(create_permission=True)
     success_msg('이메일 인증 완료')
-    return render_template_auth("mypage.html")
+    return render_template_auth('mypage.html')
 
 @auth.route('/send-mail-otp')
 @not_have_create_permission_required
@@ -121,7 +125,7 @@ def send_mail_otp():
         error_msg(str(e))
     return redirect(url_for('auth.mypage'))
 
-@auth.route("/make-category", methods=['GET', 'POST'])
+@auth.route('/make-category', methods=['GET', 'POST'])
 @admin_required
 def make_category():
     form = CategoryForm()
@@ -132,7 +136,18 @@ def make_category():
             success_msg(f'{form.name.data} category 생성에 성공하였습니다.')
         form.name.data = ''
 
-    return render_template_auth("make_category.html", form=form)
+    return render_template_auth('make_category.html', form=form)
+
+@auth.route('/user-info-edit', methods=['POST'])
+@only_post_method
+def user_info_edit():
+    form = UserInfoForm()
+
+    if form_valid(form) and not get_model('user').duplicate_check(username=form.username.data):  
+        current_user.save_instance(username=form.username.data)
+        success_msg('이름 수정 완료!')
+
+    return redirect(url_for('auth.mypage'))
 
 # ------------------------------------------------ third-party 가입 ------------------------------------------------
 @auth.route('/<string:domain>/<string:type>')
@@ -157,6 +172,7 @@ def callback(domain, type):
             1. 이메일 데이터 가져와서 db 체크
             2. login_user(user)
         '''
+        email = user_data.get('email')
         user = get_model('user').get_instance(email=user_data['email'])
         if not user: return redirect(url_for('auth.login'))
         if not domain_match(domain, user): return redirect(url_for('auth.login'))
@@ -172,14 +188,12 @@ def callback(domain, type):
             3. auth_type = 도메인 저장. 
             4. 비밀번호는 랜덤 문자열 넣기 
         '''
+        email = user_data['email']
+        if get_model('user').duplicate_check(email=email): return redirect(url_for('auth.signup'))
+
         username = user_data.get('name', user_data.get('nickname'))
-        email = user_data.get('email')
-
-        if get_model('user').duplicate_check(email=email, username=username): 
-            return redirect(url_for('auth.signup'))
-
         get_model('user')(
-            username=username,
+            username=make_name(username),
             email=email,
             password=token_hex(16),
             create_permission=True,
