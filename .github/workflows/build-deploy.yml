@@ -15,8 +15,11 @@ jobs:
                   username: ${{ secrets.EC2_USERNAME }}
                   key: ${{ secrets.EC2_PRIVATE_KEY }}
                   port: ${{ secrets.EC2_SSH_PORT }}
+                  # git fetch origin main   # 원격 저장소의 main 브랜치에서 최신 커밋 가져오기
+                  # git reset --hard origin/main   # 로컬의 main 브랜치를 원격 저장소의 main 브랜치와 동기화
                   script: |
                       cd MyBlog_project
-                      git pull
+                      git fetch origin main   
+                      git reset --hard origin/main   
                       chmod +x run_docker.sh
                       ./run_docker.sh
