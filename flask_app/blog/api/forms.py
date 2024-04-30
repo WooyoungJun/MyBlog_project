@@ -24,8 +24,8 @@ class SignUpForm(BaseForm):
     password_check = PasswordField('password_check', validators=[DataRequired()])
     
 class LoginForm(BaseForm):
-    email = EmailField('email', validators=[DataRequired('이메일을 입력해주세요'), Email('이메일 형식을 지켜주세요.')])
-    password = PasswordField('password', validators=[DataRequired('비밀번호를 입력해주세요.'), Length(6, 30, '비밀번호 길이는 6글자 이상 30글자 이하여야 합니다.')])
+    email = SignUpForm.email
+    password = SignUpForm.password
 
 class PostForm(BaseForm):
     title = StringField('title', validators=[DataRequired('제목을 작성해주세요.')])
@@ -56,3 +56,6 @@ class OtpForm(BaseForm):
 
 class CategoryForm(BaseForm):
     name = StringField('category', validators=[Length(3, 20, '카테고리는 3자 이상 20자 이하여야 합니다.')])
+
+class UserInfoForm(BaseForm):
+    username = SignUpForm.username

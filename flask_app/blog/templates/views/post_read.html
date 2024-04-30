@@ -34,25 +34,30 @@
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
             let postId = document.getElementById('post_data').getAttribute('data_post_id');
-            fetch('/post-delete/' + postId, {method:"POST"})
+            fetch('/post-delete/' + postId, {method:"DELETE"})
             .then(response => {
                 if (response.status === 200){
-                    window.location.href = '/'
+                    window.location.href = '/';
+                } else {
+                    window.location.reload();
                 }
             })
+            .catch(error => {
+                console.error(error);
+            });
         }
     }
     function onDeleteComment(button){
         let confirm = window.confirm('정말 삭제하시겠습니까?');
         if (confirm) {
             let commentId = button.getAttribute('data_comment_id');
-            fetch('/comment-delete/' + commentId, {method:"POST"})
+            fetch('/comment-delete/' + commentId, {method:"DELETE"})
             .then(response => {
                 window.location.reload();
-                if (response.status === 200){
-                } else {
-                }
             })
+            .catch(error => {
+                console.error(error);
+            });
         }
     }
 </script>

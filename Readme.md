@@ -115,5 +115,5 @@ MyBlog_project
 
 * otp 인증 코드를 생성 후 해당 코드와 유효 시간을 session에 저장하여, 유효시간동안(MAIL_LIMIT_TIME)만 인증할 수 있도록 구현했습니다.
 
-### OAuth 2.0을 활용해 third-party(구글) 회원 가입 및 로그인 기능을 구현
+### OIDC(OpenID Connect)를 활용해 third-party(구글, 카카오) 회원 가입 및 로그인 기능을 구현
 * 

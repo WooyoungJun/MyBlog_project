@@ -1,8 +1,10 @@
 from base64 import urlsafe_b64decode
+from random import randint
 from urllib.parse import urlencode
 from flask import json, current_app, request
 import requests
 
+from .models import get_model
 from .utils import error_msg
 
 def set_domain_config(app):
@@ -23,7 +25,7 @@ def set_domain_config(app):
         SCOPE = 사용자 email과 이름, 프로필 사진등의 기본 profile 등 사용자 정보에 대한 권한 부여
     
     '''
-    for domain in config["DOMAINS"]:
+    for domain in config['DOMAINS']:
         client_secret_file = config.get(f'{domain}_CLIENT_SECRET_FILE')
         config[f'{domain}'] = True
         config[f'{domain}_CLIENT_ID'] = client_secret_file['client_id']
@@ -49,7 +51,7 @@ def make_auth_url_and_set(app):
             scope=config[f'{domain}_SCOPE'],
             response_type='code',
         ))
-        config[f'{domain}_{type}_{mode}_AUTH_PAGE_URL'] = f"{config[f'{domain}_AUTH_URI']}?{query_string}"
+        config[f'{domain}_{type}_{mode}_AUTH_PAGE_URL'] = f'{config[f"{domain}_AUTH_URI"]}?{query_string}'
 
 def not_exist_domain(domain):
     if domain.upper() not in current_app.config['DOMAINS']:
@@ -75,7 +77,7 @@ def get_access_token(domain, type):
     return access_token
 
 def get_user_info(access_token):
-    header, payload, signature = access_token.json()['id_token'].split(".") # 헤더, 페이로드, 서명
+    header, payload, signature = access_token.json()['id_token'].split('.') # 헤더, 페이로드, 서명
     padded = payload + '=' * (4 - len(payload) % 4)
     return json.loads(urlsafe_b64decode(padded).decode('utf-8'))
 
@@ -89,3 +91,11 @@ def domain_match(domain, user):
         error_msg('가입한 도메인이 아닙니다.')
         return False
     return True
+
+def make_name(name):
+    new_name = name
+    while get_model('user').is_in_model(username=new_name):
+        # name 존재하면 True => 계속 반복
+        random_number = randint(100000, 999999) 
+        new_name = name + str(random_number)  
+    return new_name  
