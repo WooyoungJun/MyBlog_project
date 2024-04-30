@@ -1,7 +1,7 @@
 from flask import Flask
 
-from .admin_models import get_all_admin_models
-from .models import get_model
+from .api.admin_models import get_all_admin_models
+from .api.models import get_model
 
 def create_app(config, mode):
     '''
@@ -12,10 +12,15 @@ def create_app(config, mode):
     app = Flask(__name__)
     app.config.from_object(config) # 환경변수 설정 코드
     app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
-    app.config['mode'] = mode.lower()
+    app.config['mode'] = mode.upper()
+
+    # third-party 관련 환경 변수 셋팅
+    from .api.third_party import set_domain_config, make_auth_url_and_set
+    set_domain_config(app)
+    make_auth_url_and_set(app)
 
     # db, migrate init + 테이블 생성
-    from .models import db_migrate_setup
+    from .api.models import db_migrate_setup
     db_migrate_setup(app)
 
     # admin 페이지에 모델뷰 추가
@@ -24,7 +29,7 @@ def create_app(config, mode):
     # blueprint 등록 코드, url_prefix를 기본으로 함
     add_blueprint(app)
 
-    from .error import error_handler_setting
+    from .api.error import error_handler_setting
     error_handler_setting(app)
 
     # jinja2 필터 등록
@@ -37,7 +42,7 @@ def create_app(config, mode):
     add_cli(app)
 
     # 쌓인 오류 메세지 삭제
-    from .email import delete_error_email
+    from .api.email import delete_error_email
     with app.app_context():
         delete_error_email()
 
@@ -51,15 +56,15 @@ def create_app(config, mode):
 def add_admin_view(app):
     # admin 페이지에 모델뷰 추가
     from flask_admin import Admin
-    from .models import db
+    from .api.models import db
     admin = Admin(app, name='MyBlog', template_mode='bootstrap3')
     for admin_model, model in get_all_admin_models():
         admin.add_view(admin_model(model, db.session))
 
 def add_blueprint(app):
-    from .views import views
+    from .api.views import views
     app.register_blueprint(views, name='views')
-    from .auth import auth
+    from .api.auth import auth
     app.register_blueprint(auth, name='auth', url_prefix='/auth')
 
 def set_login_manager(app):

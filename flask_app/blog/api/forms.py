@@ -2,7 +2,8 @@ from flask_login import current_user
 from flask_wtf import FlaskForm
 from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
-from blog.models import get_model
+
+from .models import get_model
 
 class BaseForm(FlaskForm):
     def set_form(self, **kwargs):

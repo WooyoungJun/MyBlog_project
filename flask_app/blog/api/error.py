@@ -1,4 +1,5 @@
 from flask import redirect, url_for
+
 from .utils import error_msg
 
 def error_handler_setting(app):

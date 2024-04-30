@@ -1,5 +1,5 @@
 from secrets import token_hex
-from flask import Blueprint, current_app, jsonify, redirect, url_for
+from flask import Blueprint, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
 from .utils import (
@@ -9,10 +9,10 @@ from .utils import (
     form_valid, form_invalid, success_msg, error_msg, get_method, post_method,      # 기타
 )
 from .email import (
-    send_mail, session_update, delete_session, get_otp, get_remain_time,       # email 인증
+    send_mail, session_update, delete_session, get_otp, get_remain_time,            # email 인증
 )
 from .third_party import (
-    make_auth_url, get_access_token, get_user_info                                  # third-party 인증
+    get_auth_url, get_access_token, get_user_info, not_exist_domain                 # third-party 인증
 )
 from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm
 from .models import get_model
@@ -51,9 +51,9 @@ def logout():
     success_msg('로그아웃 성공!')
     return redirect(url_for('views.home'))
 
-@auth.route('/sign-up', methods=['GET', 'POST'])
+@auth.route('/signup', methods=['GET', 'POST'])
 @logout_required
-def sign_up():
+def signup():
     form = SignUpForm()
     params = {
         'form': form,
@@ -135,20 +135,21 @@ def make_category():
     return render_template_auth("make_category.html", form=form)
 
 # ------------------------------------------------ third-party 가입 ------------------------------------------------
-@auth.route('/google/<string:type>')
+@auth.route('/<string:domain>/<string:type>')
 @logout_required
-def google_auth_page(type):
-    return redirect(make_auth_url(domain='google', type=type))
+def google_auth_page(domain, type):
+    if not_exist_domain(domain): return redirect(url_for(f'auth.{type}'))
+    return redirect(get_auth_url(domain=domain, type=type))
 
-@auth.route('/callback/google/<string:type>')
+@auth.route('/callback/<string:domain>/<string:type>')
 @logout_required
-def callback_google(type):
-    access_token = get_access_token(domain='google', type=type)
+def callback_google(domain, type):
+    access_token = get_access_token(domain=domain, type=type)
     if access_token.status_code != 200:
         error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
         return redirect(url_for('views.home'))
     
-    response = get_user_info(domain='google', access_token=access_token.json()['access_token'])
+    response = get_user_info(domain=domain, access_token=access_token.json()['access_token'])
     if response.status_code != 200:
         error_msg(f'userinfo RESPONSE 에러 코드: {response.status_code}\n{response}')
         return redirect(url_for('views.home'))
@@ -160,7 +161,7 @@ def callback_google(type):
             2. login_user(user)
         '''
         user = get_model('user').get_instance(email=response.json()['email'])
-        if not user: return redirect(url_for('views.home'))
+        if not user: return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
         success_msg('로그인 성공!')
@@ -174,7 +175,7 @@ def callback_google(type):
         '''
         user_data = response.json()
         if get_model('user').duplicate_check(email=user_data['email'], username=user_data['name']): 
-            return redirect(url_for('views.home'))
+            return redirect(url_for('auth.signup'))
 
         get_model('user')(
             username=user_data['name'],

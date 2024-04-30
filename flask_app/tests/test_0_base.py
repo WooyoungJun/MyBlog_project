@@ -7,7 +7,7 @@ import unittest
 from flask_login import login_user, logout_user
 
 from blog import create_app
-from blog.models import db, get_model
+from blog.api.models import db, get_model
 from tests.test_config import TestConfig
 
 class TestBase(unittest.TestCase):

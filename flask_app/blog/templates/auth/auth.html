@@ -42,8 +42,8 @@
                     
                     <p id="third-party-login">
                         <!-- Google 로그인 아이콘 추가 -->
-                        <a href="{{url_for('auth.google_auth_page', type=type)}}">
-                            <img src="../static/assets/img/web_light_rd_{{type}}.png" alt="Google 로그인">
+                        <a href="{{url_for('auth.google_auth_page', domain='google', type=type)}}">
+                            <img src="../static/assets/img/web_light_rd_{{type}}.png" alt="Google {{type}}">
                         </a>
                     </p>
                 </div>
