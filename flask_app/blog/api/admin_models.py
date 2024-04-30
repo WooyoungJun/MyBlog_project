@@ -1,16 +1,20 @@
 from flask import abort
+from flask_admin import AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from flask_admin.actions import action
 from flask_login import current_user
 from flask_wtf import FlaskForm
 from werkzeug.security import generate_password_hash
-from wtforms import BooleanField, StringField, SelectField
-
+from wtforms import BooleanField, StringField, SelectField, IntegerField
 
 from .forms import CommentForm, SignUpForm, PostForm
 from .utils import error_msg
 from .models import get_model
 
+class CustomAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        return self.render('admin/admin_base.html', username=current_user.username)
+    
 class AdminBase(ModelView):
     column_formatters = {
         'date_created': lambda view, context, model, name: model.date_created.strftime('%Y-%m-%d %H:%M:%S')
@@ -23,6 +27,7 @@ class AdminBase(ModelView):
             return abort(403)
         
     # 사용자 지정 도구 추가
+    from flask_admin.actions import action
     @action('update_model_instances', 'Update Model', 'Are you sure you want to update model for selected object?')
     def update_model_instances(self, ids):
         instances = self.model.query.filter(self.model.id.in_(ids)).all()
@@ -31,12 +36,14 @@ class AdminBase(ModelView):
             
 class UserAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'username', 'email', 'create_permission', 'admin_check', 'posts_count', 'comments_count', 'is_third_party')
+    column_list = ('id', 'username', 'email', 'create_permission', 'admin_check', 'posts_count', 'comments_count', 'auth_type')
 
     # 2. 폼 데이터 설정
     permisson_check = {
+        'username': StringField('username'),
         'create_permission': BooleanField('create_permission', default=False), 
         'admin_check': BooleanField('admin_check', default=False),
+        # 'auth_type': IntegerField('auth_type', default=0),
     }
     create_form = type('ExtendedSignUpForm', (SignUpForm,), permisson_check)
     edit_form = type('EditForm', (FlaskForm,), permisson_check)
@@ -49,6 +56,7 @@ class UserAdmin(AdminBase):
         model.comments_count = model.user_comments.count()
         super().on_model_change(form, model, is_created)
     
+    # 4. 자신 계정 삭제 불가
     def delete_model(self, model):
         if model.id == current_user.id:
             error_msg('자신의 계정은 삭제할 수 없습니다.')

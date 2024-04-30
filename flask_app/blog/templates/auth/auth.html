@@ -40,10 +40,15 @@
                         <button class="btn btn-primary text-uppercase" id="{{ type }}Button" type="submit">{{type}}</button>
                     </form>
                     
-                    <p id="third-party-login">
+                    <p id="third-party-{{type}}">
                         <!-- Google 로그인 아이콘 추가 -->
-                        <a href="{{url_for('auth.google_auth_page', domain='google', type=type)}}">
+                        <a href="{{url_for('auth.auth_page', domain='google', type=type)}}">
                             <img src="../static/assets/img/web_light_rd_{{type}}.png" alt="Google {{type}}">
+                        </a>
+                        <br/><br/>
+                        <!-- kakao 로그인 아이콘 추가 -->
+                        <a href="{{url_for('auth.auth_page', domain='kakao', type=type)}}">
+                            <img src="../static/assets/img/kakao_{{type}}.png" alt="Kakao {{type}}">
                         </a>
                     </p>
                 </div>

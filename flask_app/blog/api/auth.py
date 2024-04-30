@@ -4,15 +4,15 @@ from flask_login import login_required, login_user, logout_user, current_user
 
 from .utils import (
     admin_required, logout_required, only_delete_method,
-    not_have_create_permission_required, render_template_with_user,                 # 데코레이터 함수
+    not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
 
-    form_valid, form_invalid, success_msg, error_msg, get_method, post_method,      # 기타
+    form_valid, form_invalid, success_msg, error_msg, get_method, post_method,          # 기타
 )
 from .email import (
-    send_mail, session_update, delete_session, get_otp, get_remain_time,            # email 인증
+    send_mail, session_update, delete_session, get_otp, get_remain_time,                # email 인증
 )
 from .third_party import (
-    get_auth_url, get_access_token, get_user_info, not_exist_domain                 # third-party 인증
+    domain_match, get_auth_url, get_access_token, get_domain_num, get_user_info, not_exist_domain     # third-party 인증
 )
 from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm
 from .models import get_model
@@ -137,31 +137,29 @@ def make_category():
 # ------------------------------------------------ third-party 가입 ------------------------------------------------
 @auth.route('/<string:domain>/<string:type>')
 @logout_required
-def google_auth_page(domain, type):
+def auth_page(domain, type):
     if not_exist_domain(domain): return redirect(url_for(f'auth.{type}'))
     return redirect(get_auth_url(domain=domain, type=type))
 
 @auth.route('/callback/<string:domain>/<string:type>')
 @logout_required
-def callback_google(domain, type):
+def callback(domain, type):
     access_token = get_access_token(domain=domain, type=type)
     if access_token.status_code != 200:
         error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
         return redirect(url_for('views.home'))
     
-    response = get_user_info(domain=domain, access_token=access_token.json()['access_token'])
-    if response.status_code != 200:
-        error_msg(f'userinfo RESPONSE 에러 코드: {response.status_code}\n{response}')
-        return redirect(url_for('views.home'))
-
+    user_data = get_user_info(access_token)
+    print(user_data)
     if type == 'login':
         '''
             로그인
             1. 이메일 데이터 가져와서 db 체크
             2. login_user(user)
         '''
-        user = get_model('user').get_instance(email=response.json()['email'])
+        user = get_model('user').get_instance(email=user_data['email'])
         if not user: return redirect(url_for('auth.login'))
+        if not domain_match(domain, user): return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
         success_msg('로그인 성공!')
@@ -171,18 +169,21 @@ def callback_google(domain, type):
             회원가입
             1. 이메일, 이름 데이터 가져오기 ('email', 'name')
             2. db 이메일 중복 체크
-            3. is_third_party = True로 계정 생성. 비밀번호는 랜덤 문자열 넣기 
+            3. auth_type = 도메인 저장. 
+            4. 비밀번호는 랜덤 문자열 넣기 
         '''
-        user_data = response.json()
-        if get_model('user').duplicate_check(email=user_data['email'], username=user_data['name']): 
+        username = user_data.get('name', user_data.get('nickname'))
+        email = user_data.get('email')
+
+        if get_model('user').duplicate_check(email=email, username=username): 
             return redirect(url_for('auth.signup'))
 
         get_model('user')(
-            username=user_data['name'],
-            email=user_data['email'],
+            username=username,
+            email=email,
             password=token_hex(16),
             create_permission=True,
-            is_third_party=True,
+            auth_type=get_domain_num(domain),
         ).add_instance()
         success_msg('회원가입 완료!')
         return redirect(url_for('views.home'))

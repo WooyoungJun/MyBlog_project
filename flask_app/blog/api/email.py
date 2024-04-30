@@ -17,17 +17,19 @@ def send_mail():
 
 async def smtp_send_mail_async(msg):
     from smtplib import SMTP
-    smtp = SMTP(host=current_app.config['MAIL_SERVER'], port=current_app.config['MAIL_PORT'])
+    config = current_app.config
+    smtp = SMTP(host=config['MAIL_SERVER'], port=config['MAIL_PORT'])
     smtp.starttls() # TLS 암호화 보안 연결 설정
-    smtp.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
+    smtp.login(config['MAIL_USERNAME'], config['MAIL_PASSWORD'])
 
-    smtp.sendmail(current_app.config['MAIL_USERNAME'], current_user.email, msg.as_string())
+    smtp.sendmail(config['MAIL_USERNAME'], current_user.email, msg.as_string())
     smtp.quit()
 
 def delete_error_email():
     from imaplib import IMAP4_SSL
+    config = current_app.config
     imap = IMAP4_SSL('imap.gmail.com')
-    imap.login(current_app.config['MAIL_USERNAME'], current_app.config['MAIL_PASSWORD'])
+    imap.login(config['MAIL_USERNAME'], config['MAIL_PASSWORD'])
 
     imap.select('inbox')
     status, email_ids = imap.search(None, '(FROM "mailer-daemon@googlemail.com")')

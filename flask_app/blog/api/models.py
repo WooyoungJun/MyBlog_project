@@ -145,9 +145,9 @@ class User(BaseModel, UserMixin):
     email = db.Column(db.String(150), unique=True)                                  # email unique
     password = db.Column(db.String(150))                                            # password 
     date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))         # 회원가입 날짜, 시간 기록
-    create_permission = db.Column(db.Boolean, default=False)                   # 글 작성 권한 여부
+    create_permission = db.Column(db.Boolean, default=False)                        # 글 작성 권한 여부
     admin_check = db.Column(db.Boolean, default=False)                              # 관리자 권한 여부
-    is_third_party = db.Column(db.Boolean, default=False)                           # thirt-party 회원 가입 여부
+    auth_type = db.Column(db.Integer, default=0)                                    # 가입 type (0, 1, 2) = (홈페이지, 구글, 카카오)
 
     posts_count = db.Column(db.Integer, default=0)
     comments_count = db.Column(db.Integer, default=0)
