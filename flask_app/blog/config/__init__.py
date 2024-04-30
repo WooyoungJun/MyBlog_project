@@ -26,9 +26,9 @@ class Config():
 
     def __init__(self):
         from json import load
-        from ..api.third_party import make_auth_url_and_set, set_domain_config
-        
-        for domain in ['GOOGLE']:
+        self.DOMAINS = ['GOOGLE', 'KAKAO']
+
+        for domain in self.DOMAINS:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             json_file_path = os.path.join(script_dir, f'{domain.lower()}_json.json')
 

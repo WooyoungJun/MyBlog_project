@@ -1,5 +1,6 @@
+from base64 import urlsafe_b64decode
 from urllib.parse import urlencode
-from flask import current_app, request
+from flask import json, current_app, request
 import requests
 
 from .utils import error_msg
@@ -22,7 +23,7 @@ def set_domain_config(app):
         SCOPE = 사용자 email과 이름, 프로필 사진등의 기본 profile 등 사용자 정보에 대한 권한 부여
     
     '''
-    for domain in ['GOOGLE']:
+    for domain in config["DOMAINS"]:
         client_secret_file = config.get(f'{domain}_CLIENT_SECRET_FILE')
         config[f'{domain}'] = True
         config[f'{domain}_CLIENT_ID'] = client_secret_file['client_id']
@@ -32,16 +33,14 @@ def set_domain_config(app):
         config[f'{domain}_AUTH_URI'] = client_secret_file['auth_uri']
         config[f'{domain}_TOKEN_URI'] = client_secret_file['token_uri']
         
-        config[f'{domain}_SCOPE'] = 'email profile'
+        config[f'{domain}_SCOPE'] = client_secret_file['scope']
         config[f'{domain}_USERINFO_URI'] = client_secret_file['userinfo_uri']
 
 def make_auth_url_and_set(app):
     config = app.config
     from itertools import product
-    domains = ['GOOGLE']
     types = ['LOGIN', 'SIGNUP']
-    modes = [config['mode']]
-    all_combinations = list(product(domains, types, modes))
+    all_combinations = list(product(config['DOMAINS'], types, [config['mode']]))
 
     for domain, type, mode in all_combinations:
         query_string = urlencode(dict(
@@ -53,7 +52,7 @@ def make_auth_url_and_set(app):
         config[f'{domain}_{type}_{mode}_AUTH_PAGE_URL'] = f"{config[f'{domain}_AUTH_URI']}?{query_string}"
 
 def not_exist_domain(domain):
-    if not current_app.config.get(f'{domain.upper()}'):
+    if domain.upper() not in current_app.config['DOMAINS']:
         error_msg(f'{domain.upper()} 지원하지 않는 도메인입니다.')
         return True
 
@@ -66,7 +65,7 @@ def get_access_token(domain, type):
     domain, type = domain.upper(), type.upper()
     config = current_app.config
 
-    access_token = requests.post(current_app.config.get(f'{domain}_TOKEN_URI'), data=dict(
+    access_token = requests.post(config[f'{domain}_TOKEN_URI'], data=dict(
         code=request.args.get('code'),
         client_id=config[f'{domain}_CLIENT_ID'],
         client_secret=config[f'{domain}_CLIENT_SECRET'],
@@ -75,10 +74,18 @@ def get_access_token(domain, type):
     ))
     return access_token
 
-def get_user_info(domain, access_token):
-    domain = domain.upper()
+def get_user_info(access_token):
+    header, payload, signature = access_token.json()['id_token'].split(".") # 헤더, 페이로드, 서명
+    padded = payload + '=' * (4 - len(payload) % 4)
+    return json.loads(urlsafe_b64decode(padded).decode('utf-8'))
 
-    response = requests.get(current_app.config[f'{domain}_USERINFO_URI'], params=dict(
-        access_token=access_token
-    ))
-    return response
+def get_domain_num(domain):
+    domain = domain.upper()
+    return current_app.config['DOMAINS'].index(domain) + 1
+
+def domain_match(domain, user):
+    domain_num = get_domain_num(domain)
+    if domain_num != user.auth_type: 
+        error_msg('가입한 도메인이 아닙니다.')
+        return False
+    return True

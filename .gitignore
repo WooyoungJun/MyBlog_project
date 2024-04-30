@@ -16,8 +16,8 @@ db.sqlite3
 # migrations 폴더 제외
 migrations/
 
-# google OAuth2 client secret key 제외
-google_json.json
+# third-party client secret key 제외
+*json.json
 
 # 컴파일된 모듈의 캐시 디렉토리 무시
 # .pyc, .pyo, .pyd 무시

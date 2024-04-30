@@ -58,7 +58,8 @@ def add_admin_view(app):
     # admin 페이지에 모델뷰 추가
     from flask_admin import Admin
     from .api.models import db
-    admin = Admin(app, name='MyBlog', template_mode='bootstrap3')
+    from .api.admin_models import CustomAdminIndexView
+    admin = Admin(app, name='MyBlog', template_mode='bootstrap3', index_view=CustomAdminIndexView())
     for admin_model, model in get_all_admin_models():
         admin.add_view(admin_model(model, db.session))
 
