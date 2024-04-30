@@ -56,7 +56,7 @@ class AuthTest(TestBase):
         self.assertIsNone(mypage_before_otp.find(id='otpInput'))
 
         # 2. otp 보내고 리디렉션 확인, otpInput 있어야하고 otpSend 없어야함.
-        response = self.test_client.post('/auth/send-mail-otp', follow_redirects=True)
+        response = self.test_client.get('/auth/send-mail-otp', follow_redirects=True)
         mypage_after_otp = BeautifulSoup(response.data, 'html.parser')
         self.assertIsNone(mypage_after_otp.find(id='otpSend'))
         self.assertIsNotNone(mypage_after_otp.find(id='otpInput'))
@@ -77,9 +77,9 @@ class AuthTest(TestBase):
         카테고리 페이지 접근 후 확인
     '''
     def test_3_make_category(self):
-        # 1. make-category 페이지 접근 = 권한 오류 403
+        # 1. make-category 페이지 접근 = 권한 오류 = redirect 302
         response = self.test_client.get('/auth/make-category')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
 
         # 2. 권한 변경 후 확인
         self.user1.save_instance(admin_check=True)

@@ -23,7 +23,7 @@ def set_domain_config(app):
     
     '''
     for domain in ['GOOGLE']:
-        client_secret_file = config[f'{domain}_CLIENT_SECRET_FILE']
+        client_secret_file = config.get(f'{domain}_CLIENT_SECRET_FILE')
         config[f'{domain}'] = True
         config[f'{domain}_CLIENT_ID'] = client_secret_file['client_id']
         config[f'{domain}_CLIENT_SECRET'] = client_secret_file['client_secret']
@@ -59,17 +59,18 @@ def not_exist_domain(domain):
 
 def get_auth_url(domain, type):
     config = current_app.config
-    return config[f'{domain.upper()}_{type.upper()}_{config["mode"]}_AUTH_PAGE_URL']
+    domain, type = domain.upper(), type.upper()
+    return config[f'{domain}_{type}_{config["mode"]}_AUTH_PAGE_URL']
 
 def get_access_token(domain, type):
-    domain = domain.upper()
+    domain, type = domain.upper(), type.upper()
     config = current_app.config
 
     access_token = requests.post(current_app.config.get(f'{domain}_TOKEN_URI'), data=dict(
         code=request.args.get('code'),
         client_id=config[f'{domain}_CLIENT_ID'],
         client_secret=config[f'{domain}_CLIENT_SECRET'],
-        redirect_uri=config[f'{domain}_REDIRECT_URIS'][f'{type.upper()}_{config["mode"]}'],
+        redirect_uri=config[f'{domain}_REDIRECT_URIS'][f'{type}_{config["mode"]}'],
         grant_type='authorization_code',
     ))
     return access_token

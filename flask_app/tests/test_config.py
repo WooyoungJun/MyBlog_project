@@ -9,8 +9,7 @@ class TestConfig():
     WTF_CSRF_ENABLED = False
 
     SECRET_KEYS = {
-        'DEVELOPMENT_SECRET_KEY': 'test',
-        'PRODUCTION_SECRET_KEY': 'test'
+        'TEST_SECRET_KEY': 'test',
     }
 
     from .test_secret import MAIL_PASSWORD

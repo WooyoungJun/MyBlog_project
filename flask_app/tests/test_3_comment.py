@@ -102,7 +102,7 @@ class CommentTest(TestBase):
     '''
     def test_3_comment_delete(self):
         # 1. 삭제 요청 후 확인
-        response = self.test_client.post('/comment-delete/1')
+        response = self.test_client.delete('/comment-delete/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
         response = self.test_client.get('post/1')

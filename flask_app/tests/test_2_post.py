@@ -99,9 +99,9 @@ class PostTest(TestBase):
         self.assertIsNone(source.find(id='edit_button')) 
         self.assertIsNone(source.find(id='delete_button'))
 
-        # 7. 새로운 유저로 post 수정 페이지 접근시 abort = redirect 403 확인
+        # 7. 새로운 유저로 post 수정 페이지 접근시 abort = redirect 302 확인
         response_edit_page = self.test_client.get('/post-edit/1')
-        self.assertEqual(response_edit_page.status_code, 403)
+        self.assertEqual(response_edit_page.status_code, 302)
 
     '''
     3. post 삭제
@@ -113,6 +113,6 @@ class PostTest(TestBase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['message'], 'success')
 
-        # 2. 삭제 포스트 접근 확인(Not Found 404 code)
+        # 2. 삭제 포스트 접근 확인(Not Found = redirect 302)
         response = self.test_client.get('/post/1')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 302)

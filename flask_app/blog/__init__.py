@@ -14,10 +14,11 @@ def create_app(config, mode):
     app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
     app.config['mode'] = mode.upper()
 
-    # third-party 관련 환경 변수 셋팅
-    from .api.third_party import set_domain_config, make_auth_url_and_set
-    set_domain_config(app)
-    make_auth_url_and_set(app)
+    if mode != 'TEST':
+        # third-party 관련 환경 변수 셋팅
+        from .api.third_party import set_domain_config, make_auth_url_and_set
+        set_domain_config(app)
+        make_auth_url_and_set(app)
 
     # db, migrate init + 테이블 생성
     from .api.models import db_migrate_setup

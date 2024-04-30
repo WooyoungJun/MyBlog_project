@@ -16,7 +16,7 @@ class TestBase(unittest.TestCase):
     # 해당 테스트 클래스 실행 시 최초 1번 실행
     @classmethod
     def setUpClass(cls) -> None:
-        cls.app = create_app(config=TestConfig, mode='DEVELOPMENT') # Flask app 생성
+        cls.app = create_app(config=TestConfig, mode='TEST') # Flask app 생성
         cls.app_context = cls.app.app_context() # app context 
         cls.app_test_request_context = cls.app.test_request_context() # test request context
         cls.test_client = cls.app.test_client() # test client 생성
