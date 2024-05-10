@@ -5,7 +5,7 @@ from flask import json, current_app, request
 import requests
 
 from .models import get_model
-from .utils import error_msg
+from .utils import Msg
 
 def set_domain_config(app):
     config = app.config
@@ -54,7 +54,7 @@ def make_auth_url_and_set(app):
 
 def not_exist_domain(domain):
     if domain.upper() not in current_app.config['DOMAINS']:
-        error_msg(f'{domain.upper()} 지원하지 않는 도메인입니다.')
+        Msg.error_msg(f'{domain.upper()} 지원하지 않는 도메인입니다.')
         return True
 
 def get_auth_url(domain, type):
@@ -87,7 +87,7 @@ def get_domain_num(domain):
 def domain_match(domain, user):
     domain_num = get_domain_num(domain)
     if domain_num != user.auth_type: 
-        error_msg('가입한 도메인이 아닙니다.')
+        Msg.error_msg('가입한 도메인이 아닙니다.')
         return False
     return True
 
