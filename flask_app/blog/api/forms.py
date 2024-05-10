@@ -27,10 +27,8 @@ class BaseForm(FlaskForm):
 class SignUpForm(BaseForm):
     username = StringField('username', validators=[DataRequired('사용자 이름은 필수로 입력해야 합니다.'), Length(3,30, '사용자 이름은 3글자 이상 30글자 이하여야 합니다.')])                                
     email = EmailField('email', validators=[DataRequired('사용자 이메일은 필수로 입력해야 합니다.'), Email('이메일 형식을 지켜주세요.')])                        
-    password = PasswordField('password', validators=[DataRequired('비밀번호를 입력해주세요.'), 
-                                                    Length(6, 30, '비밀번호 길이는 6글자 이상 30글자 이하여야 합니다.'), 
-                                                    EqualTo("password_check", message="비밀번호가 일치해야 합니다.")])
-    password_check = PasswordField('password_check', validators=[DataRequired()])
+    password = PasswordField('password', validators=[DataRequired('비밀번호를 입력해주세요.'), Length(6, 30, '비밀번호 길이는 6글자 이상 30글자 이하여야 합니다.')])
+    password_check = PasswordField('password_check', validators=[DataRequired(), EqualTo("password", message="비밀번호가 일치해야 합니다.")])
     
 class LoginForm(BaseForm):
     email = SignUpForm.email

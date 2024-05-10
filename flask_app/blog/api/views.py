@@ -77,7 +77,7 @@ def category():
 def category_make():
     form = CategoryForm()
 
-    if HttpMethod.post and form.valid():
+    if HttpMethod.post() and form.valid():
         if not get_model('category').duplicate_check(name=form.name.data):
             get_model('category')(name=form.name.data).add_instance()
             Msg.success_msg(f'{form.name.data} category 생성에 성공하였습니다.')
@@ -109,7 +109,7 @@ def about_me():
 def contact():
     form = ContactForm()
 
-    if HttpMethod.post and form.valid():
+    if HttpMethod.post() and form.valid():
         get_model('message')(
             content=form.content.data,
             user_id=current_user.id,
@@ -144,7 +144,7 @@ def post_create():
     # GET 요청 = 쿼리 최대 2번 = user 1번 + category 1번  
     # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
-    if HttpMethod.get or form.invalid():
+    if HttpMethod.get() or form.invalid():
         return render_template_views(
             'post_write.html', 
             form=form, 
@@ -177,7 +177,7 @@ def post_edit(post_id):
     if not post: return error(404)
     if not is_owner(post.author_id): return error(403)
 
-    if HttpMethod.get:
+    if HttpMethod.get():
         form.set_form_from_obj(post)
         return render_template_views('post_write.html', **params)
     
