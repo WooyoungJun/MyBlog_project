@@ -1,7 +1,5 @@
 # docker-compose.yml
 
-version: "2.27"
-
 services:
   flask_app:
     # 서비스 이름
