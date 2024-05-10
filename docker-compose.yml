@@ -1,6 +1,6 @@
 # docker-compose.yml
 
-version: "3.7"
+version: "2.27"
 
 services:
   flask_app:
