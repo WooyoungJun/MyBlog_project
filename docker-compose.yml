@@ -8,7 +8,6 @@ services:
     build:
       context: ./flask_app # 도커 이미지 빌드 경로
       dockerfile: Dockerfile # 도커 파일 이름 지정
-      builder: buildx  # Buildx를 사용하도록 설정
     container_name: flask_app # 컨테이너 이름
     restart: always
     command: gunicorn -b 0.0.0.0:8888 --env FLASK_DEBUG=0 app:app
@@ -21,7 +20,6 @@ services:
     build:
       context: ./nginx # 도커 이미지 빌드 경로
       dockerfile: Dockerfile # 도커 파일 이름 지정
-      builder: buildx  # Buildx를 사용하도록 설정
     container_name: nginx_server # 컨테이너 이름
     restart: always
     ports:

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 echo killing old docker processes
-docker-compose rm -fs
+docker compose rm -fs
 
 echo building docker containers as daemon
-docker-compose up --build -d
+docker compose up --build -d
 
 # Flask 애플리케이션 컨테이너의 ID 가져오기
 FLASK_CONTAINER_ID=$(docker ps -qf "name=flask_app")
