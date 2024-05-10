@@ -35,7 +35,7 @@ def login():
         'type': 'login',
     }
 
-    if HttpMethod.get: return render_template_auth('auth.html', **params)
+    if HttpMethod.get(): return render_template_auth('auth.html', **params)
     if form.invalid(): return render_template_auth('auth.html', **params)
     
     user = get_model('user').user_check(email=form.email.data, password=form.password.data)
@@ -61,8 +61,7 @@ def signup():
         'type': 'signup',
     }
 
-    if HttpMethod.get: return render_template_auth('auth.html', **params)
-    if form.invalid(): return render_template_auth('auth.html', **params)
+    if HttpMethod.get() or form.invalid(): return render_template_auth('auth.html', **params)
     if get_model('user').duplicate_check(email=form.email.data, username=form.username.data):
         return render_template_auth('auth.html', **params)
     
@@ -82,7 +81,7 @@ def user_delete():
     logout_user()
     
     user.delete_instance()
-    Msg.success_msg('성공적으로 탈퇴하였습니다.')
+    Msg.success_msg(f'{str(user)} 성공적으로 탈퇴하였습니다.')
     return jsonify(message='success'), 200
 
 # ------------------------------------------------ mypage, 이메일 인증 ------------------------------------------------
@@ -102,7 +101,7 @@ def mypage():
         'user_info_form':user_info_form,
     }
     
-    if HttpMethod.get: return render_template_auth('mypage.html', **params)
+    if HttpMethod.get(): return render_template_auth('mypage.html', **params)
     if form.invalid(): return render_template_auth('mypage.html', **params)
 
     if form.otp.data != session_otp:

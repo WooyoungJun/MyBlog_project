@@ -164,10 +164,10 @@ class BaseModel(db.Model):
         return dumps(self)
 
     def __repr__(self):
-        return f'{self.__class__.__name__} {self.id}: {self.name}'
+        return f'{self.__class__.__name__}: '
     
     def __str__(self):
-        return f'{self.__class__.__name__} {self.id}: {self.name}'
+        return f'{self.__class__.__name__}: '
 
 # flask-login 사용하기 위해 UserMixin 상속
 class User(BaseModel, UserMixin):
@@ -211,7 +211,10 @@ class User(BaseModel, UserMixin):
         super().update_instance()
 
     def __repr__(self):
-        return super().__repr__() + f'{self.username}'                                 
+        return super().__repr__() + f'{self.username}'         
+
+    def __str__(self):
+        return super().__str__() + f'{self.username}'                         
     
 class Post(BaseModel):
     __tablename__ = 'post'                                                                          
@@ -229,7 +232,10 @@ class Post(BaseModel):
     post_comments = db.relationship('Comment', back_populates='post', cascade='delete, delete-orphan', lazy='dynamic')
 
     def __repr__(self):
-        return super().__repr__() + f'{self.title}'   
+        return super().__repr__() + f'{self.title}'         
+
+    def __str__(self):
+        return super().__str__() + f'{self.title}'     
 
 class Category(BaseModel):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
@@ -237,7 +243,10 @@ class Category(BaseModel):
     category_posts = db.relationship('Post', back_populates='category', cascade='delete, delete-orphan', lazy='dynamic')             
 
     def __repr__(self):
-        return super().__repr__() + f'{self.name}'   
+        return super().__repr__() + f'{self.name}'         
+
+    def __str__(self):
+        return super().__str__() + f'{self.name}'    
 
 class Comment(BaseModel):
     __tablename__ = 'comment'
@@ -250,8 +259,12 @@ class Comment(BaseModel):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_comment_post', ondelete='CASCADE'), nullable=False)  
     post = db.relationship('Post', back_populates='post_comments')
     
+
     def __repr__(self):
-        return super().__repr__() + f'{self.post_id} \n{self.content}'
+        return super().__repr__() + f'{self.post_id} \n{self.content}'       
+
+    def __str__(self):
+        return super().__str__() + f'{self.post_id} \n{self.content}' 
 
 class Message(BaseModel):
     __tablename__ = 'message'
@@ -260,7 +273,10 @@ class Message(BaseModel):
     user = db.relationship('User', back_populates='user_messages')
 
     def __repr__(self):
-        return super().__repr__() + f'user {self.user_id}\'s message \n{self.content}'
+        return super().__repr__() + f'user {self.user_id}\'s message \n{self.content}'       
+
+    def __str__(self):
+        return super().__str__() + f'user {self.user_id}\'s message \n{self.content}' 
 
 def get_model(arg):
     models = {

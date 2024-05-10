@@ -45,19 +45,18 @@ def render_template_with_user(**context):
 def is_owner(id):
     return id == current_user.id
 
-class HttpMethodMeta(type):
-    def __new__(cls, name, bases, dct):
-        methods = dct.get('methods', [])
-        for method in methods:
-            @classmethod
-            def method_func(self):
-                return request.method == method.upper()
-            dct[method] = method_func
-        return super().__new__(cls, name, bases, dct)
-
-class HttpMethod(metaclass=HttpMethodMeta):
-    methods = ['get', 'post', 'delete']
-    # attribute 접근으로 request 메소드 체크 가능
+class HttpMethod():
+    @staticmethod
+    def get():
+        return request.method == 'GET'
+    
+    @staticmethod
+    def post():
+        return request.method == 'POST'
+    
+    @staticmethod
+    def delete():
+        return request.method == 'DELETE'
     
 class Msg:
     @staticmethod
