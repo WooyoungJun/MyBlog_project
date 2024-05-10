@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function onDeleteUser(){
     let confirm = window.confirm('정말 탈퇴하시겠습니까?');
     if (confirm) {
-        fetch('/auth/user-delete', {method:"POST"})
+        fetch('/auth/user-delete', {method:"DELETE"})
         .then(response => {
             if (response.status === 200){
                 window.location.href = '/'

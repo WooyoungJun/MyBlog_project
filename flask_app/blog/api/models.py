@@ -5,9 +5,9 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import selectinload, joinedload
+from json import dumps
 
-from .utils import error_msg
-from os.path import exists
+from .utils import Msg
 
 # 한국 시간대 오프셋(UTC+9)을 생성합니다.
 KST_offset = timezone(timedelta(hours=9))
@@ -48,7 +48,7 @@ class BaseModel(db.Model):
     def get_instance_by_id(cls, id):
         instance = db.session.get(cls, id)
         if not instance:
-            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
         return instance
     
     @classmethod
@@ -56,14 +56,14 @@ class BaseModel(db.Model):
         options = [joinedload(getattr(cls, attr)) for attr in relationships]
         instance = db.session.get(cls, id, options=options)
         if not instance:
-            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
         return instance
     
     @classmethod
     def get_instance(cls, **filter_conditions):
         instance = db.session.query(cls).filter_by(**filter_conditions).first()
         if not instance:
-            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
         return instance
     
     @classmethod
@@ -71,7 +71,7 @@ class BaseModel(db.Model):
         options = [selectinload(getattr(cls, attr)) for attr in relationships]
         instance =  db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
         if not instance:
-            error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
         return instance
 
     @classmethod
@@ -119,9 +119,17 @@ class BaseModel(db.Model):
                     duplicate_fields.add(key)
 
         if duplicate_fields:
-            error_msg('중복된 정보가 존재합니다: {}'.format(', '.join(duplicate_fields)))
+            Msg.error_msg('중복된 정보가 존재합니다: {}'.format(', '.join(duplicate_fields)))
             return True
         return False
+    
+    @classmethod
+    def find_by_ids(cls, ids):
+        """
+        주어진 id 리스트에 해당하는 객체들을 반환
+        """
+        ids = map(int, ids)
+        return db.session.query(cls).filter(cls.id.in_(ids)).all()
 
     def add_instance(self):
         db.session.add(self)
@@ -151,9 +159,15 @@ class BaseModel(db.Model):
         for column in self.__table__.columns:
             setattr(new_item, column.name, getattr(self, column.name))
         return new_item
+    
+    def to_json(self):
+        return dumps(self)
 
     def __repr__(self):
-        return f'{self.__class__.__name__} {self.id}: '
+        return f'{self.__class__.__name__} {self.id}: {self.name}'
+    
+    def __str__(self):
+        return f'{self.__class__.__name__} {self.id}: {self.name}'
 
 # flask-login 사용하기 위해 UserMixin 상속
 class User(BaseModel, UserMixin):
@@ -182,8 +196,8 @@ class User(BaseModel, UserMixin):
         user = db.session.query(cls).filter_by(email=email).first()
         if user:
             if not check_password_hash(password, user.password): return user
-            else: return error_msg('비밀번호가 틀렸습니다.')
-        else: return error_msg('가입되지 않은 이메일입니다.')
+            else: return Msg.error_msg('비밀번호가 틀렸습니다.')
+        else: return Msg.error_msg('가입되지 않은 이메일입니다.')
     
     def have_create_permission(self):
         return self.create_permission

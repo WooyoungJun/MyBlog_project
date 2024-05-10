@@ -1,14 +1,15 @@
-from flask import Blueprint, jsonify, url_for, redirect
+from flask import Blueprint, jsonify, url_for, redirect, request
 from flask_login import current_user
+from json import loads
 
-from .forms import CommentForm, ContactForm, PostForm
+from .forms import CategoryForm, CommentForm, ContactForm, PostForm
 from .models import get_model
 from .utils import (
-    only_delete_method, only_post_method, 
+    Msg, HttpMethod, 
+    admin_required,
     render_template_with_user, create_permission_required,          # 데코레이터 함수
 
-    get_method, post_method, form_invalid, form_valid, 
-    success_msg, is_owner, error                                    # 기타
+    is_owner, error                                                 # 기타
 )
 
 views = Blueprint('views', __name__)
@@ -45,15 +46,6 @@ def user_posts(user_id):
         selected_user=selected_user,
     )
 
-@views.route('/category')
-def category():
-    # 쿼리 최대 2번 = category 1번 + user 1번
-    categories = get_model('category').get_all()
-    return render_template_views(
-        'category.html', 
-        categories=categories,
-    )
-
 @views.route('/posts-list/<int:category_id>')
 def posts_list(category_id):
     # 쿼리 최대 4번 = selected_category 1번 + category_posts 2번 + user 1번
@@ -68,6 +60,45 @@ def posts_list(category_id):
         category_name=selected_category.name,
     )
 
+@views.route('/category')
+def category():
+    form = CategoryForm()
+
+    # 쿼리 최대 2번 = category 1번 + user 1번
+    categories = get_model('category').get_all()
+    return render_template_views(
+        'category.html', 
+        categories=categories,
+        form=form,
+    )
+
+@views.route('/category-make', methods=['POST'])
+@admin_required
+def category_make():
+    form = CategoryForm()
+
+    if HttpMethod.post and form.valid():
+        if not get_model('category').duplicate_check(name=form.name.data):
+            get_model('category')(name=form.name.data).add_instance()
+            Msg.success_msg(f'{form.name.data} category 생성에 성공하였습니다.')
+        form.name.data = ''
+
+    return redirect(url_for('views.category'))
+
+@views.route('/category-delete', methods=['DELETE'])
+@admin_required
+def category_delete():
+    ids = request.json.get('ids', [])
+    categories = get_model('category').find_by_ids(ids)
+    if not categories: return Msg.delete_error('카테고리를 선택해주세요.')
+
+    delete_category = ''
+    for category in categories:
+        delete_category += str(category) + '\n'
+        category.delete_instance()
+
+    return Msg.delete_success(f'삭제 완료: {delete_category}')
+
 # ------------------------------------------------------------ about-me & contact 페이지 ------------------------------------------------------------
 @views.route('/about-me')
 def about_me():
@@ -78,12 +109,12 @@ def about_me():
 def contact():
     form = ContactForm()
 
-    if post_method() and form_valid(form):
+    if HttpMethod.post and form.valid():
         get_model('message')(
             content=form.content.data,
             user_id=current_user.id,
         ).add_instance()
-        success_msg('메세지 전송이 완료되었습니다.')
+        Msg.success_msg('메세지 전송이 완료되었습니다.')
         form.content.data = ''
 
     return render_template_views('contact.html', form=form)
@@ -113,7 +144,7 @@ def post_create():
     # GET 요청 = 쿼리 최대 2번 = user 1번 + category 1번  
     # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
-    if get_method() or form_invalid(form):
+    if HttpMethod.get or form.invalid():
         return render_template_views(
             'post_write.html', 
             form=form, 
@@ -126,7 +157,7 @@ def post_create():
         category_id=form.category_id.data,
         author_id=current_user.id,
     ).add_instance()
-    success_msg('Post 작성 완료!')
+    Msg.success_msg('Post 작성 완료!')
     return redirect(url_for('views.home'))
 
 @views.route('/post-edit/<int:post_id>', methods=['GET', 'POST'])
@@ -146,56 +177,52 @@ def post_edit(post_id):
     if not post: return error(404)
     if not is_owner(post.author_id): return error(403)
 
-    if get_method():
+    if HttpMethod.get:
         form.set_form_from_obj(post)
         return render_template_views('post_write.html', **params)
     
-    if form_invalid(form): return render_template_views('post_write.html', **params)
+    if form.invalid(): return render_template_views('post_write.html', **params)
     
     post.save_instance(
         title=form.title.data, 
         content=form.content.data, 
         category_id=form.category_id.data
     )
-    success_msg('Post 수정 완료!')
+    Msg.success_msg('Post 수정 완료!')
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/post-delete/<int:post_id>', methods=['DELETE'])
-@only_delete_method
 @create_permission_required
 def post_delete(post_id):
     # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
     # + comments 관련 user update N번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     post = get_model('post').get_instance_by_id(post_id)
-    if not post: return jsonify(message='error'), 404
+    if not post: return Msg.delete_error('존재하지 않는 게시글입니다.')
     if not is_owner(post.author_id): return error(403)
 
     post.delete_instance()
-    success_msg('게시물이 성공적으로 삭제되었습니다.')
-    return jsonify(message='success'), 200
+    return Msg.delete_success('게시물이 성공적으로 삭제되었습니다')
 
 # ------------------------------------------------------------ comment 관련 기능들 ------------------------------------------------------------
 @views.route('/comment-create/<int:post_id>', methods=['POST'])
-@only_post_method
 @create_permission_required
 def comment_create(post_id): 
     form = CommentForm()
 
     # POST 요청 = 쿼리 최대 4번 = user 1번 + comment 추가(post조회 + post_comments + user_comments update 3번)
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
-    if form_invalid(form): return redirect(url_for('views.post', post_id=post_id))
+    if form.invalid(): return redirect(url_for('views.post', post_id=post_id))
     
     get_model('comment')(
         content=form.content.data,
         author_id=current_user.id,
         post_id=post_id
     ).add_instance()
-    success_msg('댓글 작성 성공!')
+    Msg.success_msg('댓글 작성 성공!')
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/comment-edit/<int:comment_id>', methods=['POST'])
-@only_post_method
 @create_permission_required
 def comment_edit(comment_id):
     form = CommentForm()
@@ -206,23 +233,21 @@ def comment_edit(comment_id):
     if not comment: return error(404)
     if not is_owner(comment.author_id): return error(403)
 
-    if form_valid(form):
+    if form.valid():
         comment.save_instance(content=form.content.data)
-        success_msg('댓글 수정 완료!')
+        Msg.success_msg('댓글 수정 완료!')
 
     return redirect(url_for('views.post', post_id=comment.post_id))
     
 
 @views.route('/comment-delete/<int:comment_id>', methods=['DELETE'])
-@only_delete_method
 @create_permission_required
 def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     comment = get_model('comment').get_instance_by_id(comment_id)
-    if not comment: return jsonify(message='error'), 404
+    if not comment: return Msg.delete_error('존재하지 않는 댓글입니다.')
     if not is_owner(comment.author_id): return error(403)
 
     comment.delete_instance()
-    success_msg('댓글이 성공적으로 삭제되었습니다.')
-    return jsonify(message='success'), 200
+    return Msg.delete_success('댓글이 성공적으로 삭제되었습니다.')

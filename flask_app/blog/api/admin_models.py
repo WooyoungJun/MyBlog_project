@@ -4,10 +4,10 @@ from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user
 from flask_wtf import FlaskForm
 from werkzeug.security import generate_password_hash
-from wtforms import BooleanField, StringField, SelectField, IntegerField
+from wtforms import BooleanField, StringField, SelectField
 
 from .forms import CommentForm, SignUpForm, PostForm
-from .utils import error_msg
+from .utils import Msg
 from .models import get_model
 
 class CustomAdminIndexView(AdminIndexView):
@@ -59,7 +59,7 @@ class UserAdmin(AdminBase):
     # 4. 자신 계정 삭제 불가
     def delete_model(self, model):
         if model.id == current_user.id:
-            error_msg('자신의 계정은 삭제할 수 없습니다.')
+            Msg.error_msg('자신의 계정은 삭제할 수 없습니다.')
             return
         super().delete_model(model)
 

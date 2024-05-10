@@ -3,10 +3,10 @@ from flask import Blueprint, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
 from .utils import (
-    admin_required, logout_required, only_delete_method, only_post_method,
+    Msg, HttpMethod,
+    logout_required, 
     not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
 
-    form_valid, form_invalid, success_msg, error_msg, get_method, post_method,          # 기타
 )
 from .email import (
     send_mail, session_update, delete_session, get_otp, get_remain_time,                # email 인증
@@ -15,7 +15,7 @@ from .third_party import (
     get_auth_url, get_access_token, get_domain_num, get_user_info, 
     make_name, not_exist_domain, domain_match                                           # third-party 인증
 )
-from .forms import CategoryForm, LoginForm, OtpForm, SignUpForm, UserInfoForm
+from .forms import LoginForm, OtpForm, SignUpForm, UserInfoForm
 from .models import get_model
 
 auth = Blueprint('auth', __name__)
@@ -35,21 +35,21 @@ def login():
         'type': 'login',
     }
 
-    if get_method(): return render_template_auth('auth.html', **params)
-    if form_invalid(form): return render_template_auth('auth.html', **params)
+    if HttpMethod.get: return render_template_auth('auth.html', **params)
+    if form.invalid(): return render_template_auth('auth.html', **params)
     
     user = get_model('user').user_check(email=form.email.data, password=form.password.data)
     if not user: return render_template_auth('auth.html', **params)
     
     login_user(user, remember=True)
-    success_msg('로그인 성공!')
+    Msg.success_msg('로그인 성공!')
     return redirect(url_for('views.home'))
 
 @auth.route('/logout')
 @login_required
 def logout():
     logout_user() 
-    success_msg('로그아웃 성공!')
+    Msg.success_msg('로그아웃 성공!')
     return redirect(url_for('views.home'))
 
 @auth.route('/signup', methods=['GET', 'POST'])
@@ -61,8 +61,8 @@ def signup():
         'type': 'signup',
     }
 
-    if get_method(): return render_template_auth('auth.html', **params)
-    if form_invalid(form): return render_template_auth('auth.html', **params)
+    if HttpMethod.get: return render_template_auth('auth.html', **params)
+    if form.invalid(): return render_template_auth('auth.html', **params)
     if get_model('user').duplicate_check(email=form.email.data, username=form.username.data):
         return render_template_auth('auth.html', **params)
     
@@ -71,11 +71,10 @@ def signup():
         email = form.email.data,
         password = form.password.data,
     ).add_instance()
-    success_msg('회원가입 완료!')
+    Msg.success_msg('회원가입 완료!')
     return redirect(url_for('views.home'))
 
 @auth.route('/user-delete', methods=['DELETE'])
-@only_delete_method
 @login_required
 def user_delete():
     user = get_model('user').get_instance_by_id(current_user.id)
@@ -83,7 +82,7 @@ def user_delete():
     logout_user()
     
     user.delete_instance()
-    success_msg('성공적으로 탈퇴하였습니다.')
+    Msg.success_msg('성공적으로 탈퇴하였습니다.')
     return jsonify(message='success'), 200
 
 # ------------------------------------------------ mypage, 이메일 인증 ------------------------------------------------
@@ -103,16 +102,16 @@ def mypage():
         'user_info_form':user_info_form,
     }
     
-    if get_method(): return render_template_auth('mypage.html', **params)
-    if form_invalid(form): return render_template_auth('mypage.html', **params)
+    if HttpMethod.get: return render_template_auth('mypage.html', **params)
+    if form.invalid(): return render_template_auth('mypage.html', **params)
 
     if form.otp.data != session_otp:
-        error_msg('otp 비밀번호가 일치하지 않습니다.')
+        Msg.error_msg('otp 비밀번호가 일치하지 않습니다.')
         return render_template_auth('mypage.html', **params)
     
     delete_session()
     current_user.save_instance(create_permission=True)
-    success_msg('이메일 인증 완료')
+    Msg.success_msg('이메일 인증 완료')
     return render_template_auth('mypage.html')
 
 @auth.route('/send-mail-otp')
@@ -120,32 +119,18 @@ def mypage():
 def send_mail_otp():
     try:
         send_mail()
-        success_msg('인증번호 전송 완료')
+        Msg.success_msg('인증번호 전송 완료')
     except Exception as e:
-        error_msg(str(e))
+        Msg.error_msg(str(e))
     return redirect(url_for('auth.mypage'))
 
-@auth.route('/make-category', methods=['GET', 'POST'])
-@admin_required
-def make_category():
-    form = CategoryForm()
-
-    if post_method() and form_valid(form):
-        if not get_model('category').duplicate_check(name=form.name.data):
-            get_model('category')(name=form.name.data).add_instance()
-            success_msg(f'{form.name.data} category 생성에 성공하였습니다.')
-        form.name.data = ''
-
-    return render_template_auth('make_category.html', form=form)
-
 @auth.route('/user-info-edit', methods=['POST'])
-@only_post_method
 def user_info_edit():
     form = UserInfoForm()
 
-    if form_valid(form) and not get_model('user').duplicate_check(username=form.username.data):  
+    if form.valid() and not get_model('user').duplicate_check(username=form.username.data):  
         current_user.save_instance(username=form.username.data)
-        success_msg('이름 수정 완료!')
+        Msg.success_msg('이름 수정 완료!')
 
     return redirect(url_for('auth.mypage'))
 
@@ -161,7 +146,7 @@ def auth_page(domain, type):
 def callback(domain, type):
     access_token = get_access_token(domain=domain, type=type)
     if access_token.status_code != 200:
-        error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
+        Msg.Msg.error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
         return redirect(url_for('views.home'))
     
     user_data = get_user_info(access_token)
@@ -178,7 +163,7 @@ def callback(domain, type):
         if not domain_match(domain, user): return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
-        success_msg('로그인 성공!')
+        Msg.success_msg('로그인 성공!')
         return redirect(url_for('views.home'))
     else:
         '''
@@ -199,6 +184,6 @@ def callback(domain, type):
             create_permission=True,
             auth_type=get_domain_num(domain),
         ).add_instance()
-        success_msg('회원가입 완료!')
+        Msg.success_msg('회원가입 완료!')
         return redirect(url_for('views.home'))
         

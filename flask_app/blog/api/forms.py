@@ -3,6 +3,7 @@ from flask_wtf import FlaskForm
 from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
+from .utils import Msg
 from .models import get_model
 
 class BaseForm(FlaskForm):
@@ -14,6 +15,14 @@ class BaseForm(FlaskForm):
         for field_name, value in self._fields.items():
             if hasattr(obj, field_name):
                 setattr(value, 'data', getattr(obj, field_name))
+    
+    def invalid(self):
+        if not self.validate_on_submit():
+            Msg.error_msg('유효성 검사 실패.')
+            return True
+        
+    def valid(self):
+        return self.validate_on_submit()
 
 class SignUpForm(BaseForm):
     username = StringField('username', validators=[DataRequired('사용자 이름은 필수로 입력해야 합니다.'), Length(3,30, '사용자 이름은 3글자 이상 30글자 이하여야 합니다.')])                                
