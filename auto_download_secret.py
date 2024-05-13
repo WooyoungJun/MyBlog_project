@@ -18,7 +18,7 @@ if 'Contents' in response:
         file_name = obj['Key'].split('/')[-1]
         
         # S3에서 파일 다운로드
-        download_path = join(script_dir, file_name)
+        download_path = join(script_dir, file_name).replace('\\', '/')
         S3.download_file(S3_BUCKET_NAME, obj['Key'], download_path)
         
         print(f'Downloaded {file_name} from S3 bucket to {download_path}')
