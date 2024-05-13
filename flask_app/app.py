@@ -1,4 +1,4 @@
-from blog import create_app
+from blog.factory import create_app
 from blog.config import Config
 
 app = create_app(config=Config(), mode='DEVELOPMENT')
