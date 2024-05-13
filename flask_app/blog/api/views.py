@@ -1,13 +1,13 @@
-from flask import Blueprint, jsonify, url_for, redirect, request
+from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
-from json import loads
 
+from .file_upload import file_to_s3
 from .forms import CategoryForm, CommentForm, ContactForm, PostForm
 from .models import get_model
 from .utils import (
     Msg, HttpMethod, 
     admin_required,
-    render_template_with_user, create_permission_required,          # 데코레이터 함수
+    render_template_with_user, login_and_create_permission_required,          # 데코레이터 함수
 
     is_owner, error                                                 # 기타
 )
@@ -18,6 +18,28 @@ BASE_VIEWS_DIR = 'views/'
 def render_template_views(template_name_or_list, **context):
     context['template_name_or_list'] = BASE_VIEWS_DIR + template_name_or_list
     return render_template_with_user(**context)
+
+# ------------------------------------------------------------ file upload 페이지 ------------------------------------------------------------
+@views.route('/file-upload', methods=['GET', 'POST'])
+@login_and_create_permission_required
+def file_upload():
+    if HttpMethod.get(): return render_template_views('file_upload.html')
+    
+    files = request.files.getlist('files')
+    if not files:
+        Msg.error_msg('파일을 선택해주세요')
+        return render_template_views('file_upload.html')
+    
+    msg = ''
+    for file in files:
+        try:
+            msg += file_to_s3(file) + ' '
+        except Exception as e:
+            Msg.error_msg(str(e))
+        finally:
+            if msg:
+                Msg.success_msg(f'{msg}upload 완료')
+            return render_template_views('file_upload.html')
 
 # ------------------------------------------------------------ posts_list 출력 페이지 ------------------------------------------------------------
 @views.route('/')
@@ -105,7 +127,7 @@ def about_me():
     return render_template_views('about_me.html')
     
 @views.route('/contact', methods=['GET', 'POST'])
-@create_permission_required
+@login_and_create_permission_required
 def contact():
     form = ContactForm()
 
@@ -137,7 +159,7 @@ def post(post_id):
     )
 
 @views.route('/post-create', methods=['GET', 'POST'])
-@create_permission_required
+@login_and_create_permission_required
 def post_create():
     form = PostForm()
 
@@ -161,7 +183,7 @@ def post_create():
     return redirect(url_for('views.home'))
 
 @views.route('/post-edit/<int:post_id>', methods=['GET', 'POST'])
-@create_permission_required
+@login_and_create_permission_required
 def post_edit(post_id):
     form = PostForm()
     params = {
@@ -192,7 +214,7 @@ def post_edit(post_id):
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/post-delete/<int:post_id>', methods=['DELETE'])
-@create_permission_required
+@login_and_create_permission_required
 def post_delete(post_id):
     # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
     # + comments 관련 user update N번
@@ -206,7 +228,7 @@ def post_delete(post_id):
 
 # ------------------------------------------------------------ comment 관련 기능들 ------------------------------------------------------------
 @views.route('/comment-create/<int:post_id>', methods=['POST'])
-@create_permission_required
+@login_and_create_permission_required
 def comment_create(post_id): 
     form = CommentForm()
 
@@ -223,7 +245,7 @@ def comment_create(post_id):
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/comment-edit/<int:comment_id>', methods=['POST'])
-@create_permission_required
+@login_and_create_permission_required
 def comment_edit(comment_id):
     form = CommentForm()
     
@@ -241,7 +263,7 @@ def comment_edit(comment_id):
     
 
 @views.route('/comment-delete/<int:comment_id>', methods=['DELETE'])
-@create_permission_required
+@login_and_create_permission_required
 def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번

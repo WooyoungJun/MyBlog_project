@@ -5,7 +5,7 @@ from flask_login import login_required, login_user, logout_user, current_user
 from .utils import (
     Msg, HttpMethod,
     logout_required, 
-    not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
+    login_and_not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
 
 )
 from .email import (
@@ -114,7 +114,7 @@ def mypage():
     return render_template_auth('mypage.html')
 
 @auth.route('/send-mail-otp')
-@not_have_create_permission_required
+@login_and_not_have_create_permission_required
 def send_mail_otp():
     try:
         send_mail()
