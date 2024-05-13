@@ -17,9 +17,13 @@ jobs:
                   port: ${{ secrets.EC2_SSH_PORT }}
                   # git fetch origin main   # 원격 저장소의 main 브랜치에서 최신 커밋 가져오기
                   # git reset --hard origin/main   # 로컬의 main 브랜치를 원격 저장소의 main 브랜치와 동기화
+                  # 가상환경 활성화 후 secret 파일들 다운로드
                   script: |
                       cd MyBlog_project
                       git fetch origin main   
-                      git reset --hard origin/main   
-                      chmod +x run_docker.sh
+                      git reset --hard origin/main
+
+                      source venv/bin/activate
+                      python3 ./auto_download_secret.py
+
                       ./run_docker.sh
