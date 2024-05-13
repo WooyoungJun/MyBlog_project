@@ -19,7 +19,7 @@ def logout_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def create_permission_required(f):
+def login_and_create_permission_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
@@ -27,7 +27,7 @@ def create_permission_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def not_have_create_permission_required(f):
+def login_and_not_have_create_permission_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
