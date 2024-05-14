@@ -62,7 +62,7 @@ class AuthTest(TestBase):
         self.assertIsNotNone(mypage_after_otp.find(id='otpInput'))
 
         # 3. 이메일 인증 후 after_auth_info 확인
-        self.user1.save_instance(create_permission=True)
+        self.user1.update_instance(create_permission=True)
         response = self.test_client.get('/auth/mypage')
         mypage_after_auth = BeautifulSoup(response.data, 'html.parser')
         self.assertIsNone(mypage_after_auth.find(id='otpSend'))
@@ -82,7 +82,7 @@ class AuthTest(TestBase):
         self.assertEqual(response.status_code, 302)
 
         # 2. 권한 변경 후 확인
-        self.user1.save_instance(admin_check=True)
+        self.user1.update_instance(admin_check=True)
         response = self.test_client.get('/auth/make-category')
         self.assertEqual(response.status_code, 200)
 
@@ -90,7 +90,7 @@ class AuthTest(TestBase):
         response = self.test_client.post('/auth/make-category', data=dict(
             name='category 1',
         ))
-        self.assertEqual(get_model('category').get_instance_by_id(1).name, 'category 1')
+        self.assertEqual(get_model('category').get_instance_by_id_with(1).name, 'category 1')
 
         # 4. category 페이지 접속했을 때 카테고리 목록이 잘 출력되는지 확인
         response = self.test_client.get('/category')

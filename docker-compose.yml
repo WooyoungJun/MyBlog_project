@@ -1,26 +1,26 @@
 # docker-compose.yml
 
 services:
-  flask_app:
-    # 서비스 이름
-    build:
-      context: ./flask_app # 도커 이미지 빌드 경로
-      dockerfile: Dockerfile # 도커 파일 이름 지정
-    container_name: flask_app # 컨테이너 이름
-    restart: always
-    command: gunicorn -b 0.0.0.0:8888 --env FLASK_DEBUG=0 app:app
-    volumes:
-      - /home/ubuntu/MyBlog_project/flask_app/blog/db:/flask_app/blog/db
-      - /home/ubuntu/MyBlog_project/flask_app/migrations:/flask_app/migrations
+    flask_app:
+        # 서비스 이름
+        build:
+            context: ./flask_app # 도커 이미지 빌드 경로
+            dockerfile: Dockerfile # 도커 파일 이름 지정
+        container_name: flask_app # 컨테이너 이름
+        restart: always
+        command: gunicorn -b 0.0.0.0:8888 --env FLASK_DEBUG=0 --no-reload app:app
+        volumes:
+            - /home/ubuntu/MyBlog_project/flask_app/blog/db:/flask_app/blog/db
+            - /home/ubuntu/MyBlog_project/flask_app/migrations:/flask_app/migrations
 
-  nginx_server:
-    # 서비스 이름
-    build:
-      context: ./nginx # 도커 이미지 빌드 경로
-      dockerfile: Dockerfile # 도커 파일 이름 지정
-    container_name: nginx_server # 컨테이너 이름
-    restart: always
-    ports:
-      - "8080:8080" # 호스트 포트 -> 컨테이너 포트
-    depends_on:
-      - flask_app
+    nginx_server:
+        # 서비스 이름
+        build:
+            context: ./nginx # 도커 이미지 빌드 경로
+            dockerfile: Dockerfile # 도커 파일 이름 지정
+        container_name: nginx_server # 컨테이너 이름
+        restart: always
+        ports:
+            - "8080:8080" # 호스트 포트 -> 컨테이너 포트
+        depends_on:
+            - flask_app

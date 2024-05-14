@@ -63,5 +63,9 @@ class Config():
             with open(json_file_path, 'r') as f:
                 client_secret_file = load(f)['web']
                 setattr(self, f'{domain}_CLIENT_SECRET_FILE', client_secret_file)
-                
-    
+
+    '''
+    APScheduler 관련 config
+    '''
+    SCHEDULER_API_ENABLED = True
+    SCHEDULER_RUN_IN_THREAD = True

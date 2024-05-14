@@ -64,6 +64,7 @@ function onDeleteUser(){
                     <div id="after_auth_info">
                         <b>작성한 게시글 개수:</b> {{user.posts_count}}<br>
                         <b>작성한 댓글 개수:</b> {{user.comments_count}}<br>
+                        <b>파일 업로드 할당량:</b> {{(user.get_limit() / 1024 / 1024) | round}} MB<br>
                     </div>
                 {% else %}
                     <br/><br/>

@@ -15,6 +15,17 @@
             </div>
         </div>
     </div>
+    <style>
+    .fileInput-button{
+        margin: 6px;
+        padding: 6px 25px;
+        background-color:#FF6600;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    </style>
 </header>
 {% endblock %}
 
@@ -23,10 +34,18 @@
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 justify-content-center">
             <div class="col-md-10 col-lg-8 col-xl-7">
-                <div class="my-5" style="border: 1px solid black; padding: 20px;">
-                    <form id="postForm" method="POST">
+                <div class="my-5 text-center" style="border: 1px solid black; padding: 20px;">
+                    <form id="postForm" method="POST" enctype="multipart/form-data">
                         {{form.csrf_token}}
                         {% for field in form if field.name != 'csrf_token'%}
+                            {% if field.name == 'content' %}
+                            <label class="fileInput-button" for="fileInput">
+                                파일 업로드
+                            </label>
+                            <input data-limit="{{user.get_limit()}}" type="file" id="fileInput" name="files" multiple style="display:none;"/>
+                            <div id="errorMessageContainer" style="font-size: 16px; color:red;"></div>
+                            <div id="imageContainer"></div>
+                            {% endif %}
                             <div class="form-floating">
                                 {{ field(id=field.id, class="form-control" ~ (' is-invalid' if field.errors else ''), required=True,
                                 style=("font-size: 16px;" ~ ("height:500px; resize: none;" if field.name == 'content' else ""))) }}
@@ -46,4 +65,83 @@
         </div>
     </div>
 </main>
+<script>
+const fileInputElement = document.getElementById('fileInput');
+const user_limit = fileInputElement.getAttribute('data-limit');
+
+fileInputElement.addEventListener('click', function(event) {
+    event.target.value = '';
+});
+
+fileInputElement.addEventListener('change', function(event) {
+    clearMessage();
+    const fileInput = event.target;
+    const files = fileInput.files;
+
+    if (files.length === 0) {return;}
+
+    let totalSize = 0;
+    for (let i = 0; i < files.length; i++){
+        totalSize += files[i].size;
+    }
+
+    if (totalSize > user_limit) {
+        return reset(`파일의 총 크기는 ${user_limit / 1024 / 1024}MB 이하여야 합니다.`);
+    }
+    
+    const maxSize = 1024 * 1024; // 최대 파일 크기를 1MB로 설정
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif']; // 허용되는 확장자 목록
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        if (!allowedExtensions.includes(extension)) {
+            return reset(`${allowedExtensions.join(', ')} 파일만 업로드 가능합니다.`);
+        }
+
+        if (file.size > maxSize) {
+            return reset('파일 크기는 1MB 이하여야 합니다.');
+        }
+
+        const imageContainer = document.getElementById('imageContainer');
+        imageContainer.innerHTML = ''; 
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.maxWidth = '80%';
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'btn btn-danger'
+            deleteButton.style = 'margin: 6px;'
+            deleteButton.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            deleteButton.addEventListener('click', function() {
+                if (check_confirm(`${i+1}번째 이미지를 삭제하시겠습니까?`)){
+                    imageContainer.removeChild(img);
+                    imageContainer.removeChild(deleteButton);
+                }
+            });
+
+            imageContainer.appendChild(img);
+            imageContainer.appendChild(deleteButton);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function reset(message){
+    displayErrorMessage(message);
+    fileInput.value = '';
+}
+
+function displayErrorMessage(message) {
+    const errorMessageContainer = document.getElementById('errorMessageContainer');
+    errorMessageContainer.innerHTML = `<div>${message}</div>`;
+}
+function clearMessage() {
+    const errorMessageContainer = document.getElementById('errorMessageContainer');
+    errorMessageContainer.innerHTML = '';
+}
+</script>
 {% endblock %}

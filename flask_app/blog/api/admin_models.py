@@ -30,13 +30,19 @@ class AdminBase(ModelView):
     from flask_admin.actions import action
     @action('update_model_instances', 'Update Model', 'Are you sure you want to update model for selected object?')
     def update_model_instances(self, ids):
-        instances = self.model.query.filter(self.model.id.in_(ids)).all()
+        instances = self.model.get_all_by_ids(ids)
         for instance in instances:
-            instance.update_instance()
+            instance.fill_none_fields()
+            if hasattr(instance, 'update_count'):
+                instance.update_count()
+        self.model.commit()
             
 class UserAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'username', 'email', 'create_permission', 'admin_check', 'posts_count', 'comments_count', 'auth_type')
+    column_list = ('id', 'username', 'email', 
+        'create_permission', 'admin_check', 'posts_count', 'comments_count', 
+        'auth_type', 'file_upload_limit',
+    )
 
     # 2. 폼 데이터 설정
     permisson_check = {
@@ -52,8 +58,7 @@ class UserAdmin(AdminBase):
     def on_model_change(self, form, model, is_created):
         if is_created:
             model.password = generate_password_hash(model.password)
-        model.posts_count = model.user_posts.count()
-        model.comments_count = model.user_comments.count()
+        model.update_count()
         super().on_model_change(form, model, is_created)
     
     # 4. 자신 계정 삭제 불가
@@ -65,7 +70,8 @@ class UserAdmin(AdminBase):
 
 class PostAdmin(AdminBase):
     # 1. 표시 할 열 설정
-    column_list = ('id', 'title', 'content', 'date_created', 'user', 'category', 'comments_count')
+    column_list = ('id', 'title', 'content', 'date_created', 
+        'user', 'category', 'comments_count')
     
     # 2. 폼 데이터 설정
     form = PostForm
@@ -73,8 +79,15 @@ class PostAdmin(AdminBase):
     # 3. 현재 사용자 아이디 모델에 추가하기
     def on_model_change(self, form, model, is_created):
         model.author_id = current_user.id
-        model.comments_count = model.post_comments.count()
+        model.update_count()
         super().on_model_change(form, model, is_created)
+
+class FileAdmin(AdminBase):
+    # 1. 표시 할 열 설정
+    column_list = ('id', 'name', 'size', 'post_id')
+
+    # 2. 폼 표시 X 열 설정
+    form_excluded_columns = {'post'} 
 
 class CategoryAdmin(AdminBase):
     # 1. 표시 할 열 설정
@@ -133,6 +146,7 @@ def get_all_admin_models():
     return [
         [UserAdmin, get_model('user')], 
         [PostAdmin, get_model('post')], 
+        [FileAdmin, get_model('file')],
         [CategoryAdmin, get_model('category')], 
         [CommentAdmin, get_model('comment')],
         [MessageAdmin, get_model('message')],
