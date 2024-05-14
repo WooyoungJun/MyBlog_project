@@ -22,6 +22,11 @@
         <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
         <!-- Bootstrap core JS-->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+        function check_confirm(msg='정말 삭제하시겠습니까?'){
+            return window.confirm(msg);
+        }
+        </script>
     </head>
 
     <!-- Navigation 템플릿 코드 그대로 -->
@@ -48,7 +53,6 @@
                         {% else %}
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.contact')}}">Contact</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.post_create')}}">New Post</a></li>
-                            <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('views.file_upload')}}">File Upload</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="{{url_for('auth.mypage')}}">My Page</a></li>
                             <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" style="color:red" href="{{url_for('auth.logout')}}">Logout</a></li>
                         {% endif %} 

@@ -1,6 +1,6 @@
 from flask_login import current_user
 from flask_wtf import FlaskForm
-from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField
+from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField, MultipleFileField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
 from .utils import Msg
@@ -36,13 +36,13 @@ class LoginForm(BaseForm):
 
 class PostForm(BaseForm):
     title = StringField('title', validators=[DataRequired('제목을 작성해주세요.')])
-    content = TextAreaField('content', validators=[DataRequired('본문을 작성해주세요.')])
-    category_id = SelectField('category', coerce=int, validators=[DataRequired('카테고리를 지정해주세요.')])
     author = StringField('author', render_kw={'readonly': True})
+    category_id = SelectField('category', coerce=int, validators=[DataRequired('카테고리를 지정해주세요.')])
+    content = TextAreaField('content', validators=[DataRequired('본문을 작성해주세요.')])
 
     def __init__(self, *args, **kwargs): # 선택 항목 추가
         super(PostForm, self).__init__(*args, **kwargs)
-        self.category_id.choices = [(category.id, category.name) for category in get_model('category').query.all()]
+        self.category_id.choices = [(category.id, category.name) for category in get_model('category').get_all()]
         self.author.data = current_user.username
 
 class CommentForm(BaseForm):

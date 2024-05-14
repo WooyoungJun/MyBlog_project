@@ -43,60 +43,78 @@ def db_migrate_setup(app):
 class BaseModel(db.Model):
     __abstract__ = True                                                             # 추상 클래스 설정
     id = db.Column(db.Integer, primary_key=True)                                    # primary key 설정
+
+    @classmethod
+    def get_query(cls, id, **kwargs):
+        return db.session.get(cls, id, **kwargs)
     
     @classmethod
-    def get_instance_by_id(cls, id):
-        instance = db.session.get(cls, id)
-        if not instance:
-            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
-        return instance
+    def query_with(cls, *args):
+        return db.session.query(cls, *args)
+    
+    @staticmethod
+    def commit():
+        return db.session.commit()
+    
+    @staticmethod
+    def instance_check(instance):
+        if not instance: Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+
+    @classmethod
+    def get_options(cls, f, *relationships):
+        return [f(getattr(cls, attr)) for attr in relationships]
     
     @classmethod
     def get_instance_by_id_with(cls, id, *relationships):
-        options = [joinedload(getattr(cls, attr)) for attr in relationships]
-        instance = db.session.get(cls, id, options=options)
-        if not instance:
-            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
-        return instance
-    
-    @classmethod
-    def get_instance(cls, **filter_conditions):
-        instance = db.session.query(cls).filter_by(**filter_conditions).first()
-        if not instance:
-            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        options = cls.get_options(joinedload, *relationships)
+        instance = cls.get_query(id, options=options)
+        cls.instance_check(instance)
         return instance
     
     @classmethod
     def get_instance_with(cls, *relationships, **filter_conditions):
-        options = [selectinload(getattr(cls, attr)) for attr in relationships]
-        instance =  db.session.query(cls).filter_by(**filter_conditions).options(*options).first()
-        if not instance:
-            Msg.error_msg('해당하는 인스턴스가 존재하지 않습니다.')
+        options = cls.get_options(selectinload, *relationships)
+        instance =  cls.query_with().filter_by(**filter_conditions).options(*options).first()
+        cls.instance_check(instance)
         return instance
-
-    @classmethod
-    def count(cls, **filter_conditions):
-        return db.session.query(func.count(cls.id)).filter_by(**filter_conditions).scalar()
-    
-    @classmethod
-    def count_all(cls):
-        return db.session.query(func.count(cls.id)).scalar()
     
     @classmethod
     def get_all(cls):
-        return db.session.query(cls).all() 
+        return cls.query_with().all() 
+    
+    @classmethod
+    def get_all_by_ids(cls, ids):
+        """
+        주어진 id 리스트에 해당하는 객체들을 반환
+        """
+        ids = map(int, ids)
+        return cls.query_with().filter(cls.id.in_(ids)).all()
     
     @classmethod
     def get_all_with(cls, *relationships, **filter_conditions):
-        options = [selectinload(getattr(cls, attr)) for attr in relationships]
-        return db.session.query(cls).filter_by(**filter_conditions).options(*options).all() 
+        options = cls.get_options(selectinload, *relationships)
+        return cls.query_with().filter_by(**filter_conditions).options(*options).all() 
 
     @classmethod
-    def is_in_model(cls, **filter_conditions):
-        '''
-        존재하면 True, X면 False 반환
-        '''
-        return db.session.query(cls).filter_by(**filter_conditions).scalar() is not None
+    def count_all(cls, *relationships, **filter_conditions):
+        options = cls.get_options(selectinload, *relationships)
+        return cls.query_with(func.count(cls.id)).filter_by(**filter_conditions).count()
+    
+    @classmethod
+    def count_group_by(cls, *args, **filter_conditions):
+        relationships, group_bys = [], []
+        for arg in args:
+            if type(getattr(cls, arg).property) == type(db.relationship()):
+                relationships.append(arg)
+            else:
+                group_bys.append(arg)
+
+        options = cls.get_options(selectinload, *relationships)
+        group_by = [getattr(cls, attr) for attr in group_bys]
+
+        return cls.query_with().filter_by(**filter_conditions)\
+            .group_by(*group_by).options(*options)\
+            .with_entities(*group_by, func.count(cls.id)).all()
 
     @classmethod
     def duplicate_check(cls, **kwargs):
@@ -110,7 +128,7 @@ class BaseModel(db.Model):
             else getattr(cls, key) == value 
             for key, value in kwargs.items()
         ]
-        instances = db.session.query(cls).filter(or_(*conditions)).all()
+        instances = cls.query_with().filter(or_(*conditions)).all()
 
         duplicate_fields = set()
         for instance in instances:
@@ -122,34 +140,26 @@ class BaseModel(db.Model):
             Msg.error_msg('중복된 정보가 존재합니다: {}'.format(', '.join(duplicate_fields)))
             return True
         return False
-    
-    @classmethod
-    def find_by_ids(cls, ids):
-        """
-        주어진 id 리스트에 해당하는 객체들을 반환
-        """
-        ids = map(int, ids)
-        return db.session.query(cls).filter(cls.id.in_(ids)).all()
 
     def add_instance(self):
         db.session.add(self)
-        db.session.commit()
+        self.commit()
+        return self
 
-    def save_instance(self, **kwargs):
+    def update_instance(self, **kwargs):
         for key, value in kwargs.items():
             if key in self.__table__.columns:
                 setattr(self, key, value)
-        db.session.commit()
+        self.commit()
 
     def delete_instance(self):
         db.session.delete(self)
-        db.session.commit()
+        self.commit()
 
-    def update_instance(self):
+    def fill_none_fields(self):
         none_fields = [field for field in self.__class__.__table__.columns if getattr(self, field.name) is None]
         for field in none_fields:
             setattr(self, field.name, field.default.arg)
-        db.session.commit()
     
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -164,11 +174,12 @@ class BaseModel(db.Model):
         return dumps(self)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}: '
+        return f'{self.__class__.__name__}: {self.id} '
     
     def __str__(self):
-        return f'{self.__class__.__name__}: '
+        return f'{self.__class__.__name__}: {self.id} '
 
+FILE_UPLOAD_LIMIT = 5 * 1024 * 1024
 # flask-login 사용하기 위해 UserMixin 상속
 class User(BaseModel, UserMixin):
     __tablename__ = 'user'                                                          
@@ -186,6 +197,8 @@ class User(BaseModel, UserMixin):
     user_comments = db.relationship('Comment', back_populates="user", cascade='delete, delete-orphan', lazy='dynamic') 
     user_messages = db.relationship('Message', back_populates='user', cascade='delete, delete-orphan', lazy='dynamic')     
 
+    file_upload_limit = db.Column(db.Float, default=0.0)
+
     def __init__(self, password, **kwargs):
         self.password = generate_password_hash(password)
         super().__init__(**kwargs)
@@ -193,7 +206,7 @@ class User(BaseModel, UserMixin):
     @classmethod
     def user_check(cls, email, password):
         email = email.strip().replace(' ', '')
-        user = db.session.query(cls).filter_by(email=email).first()
+        user = cls.query_with().filter_by(email=email).first()
         if user:
             if not check_password_hash(password, user.password): return user
             else: return Msg.error_msg('비밀번호가 틀렸습니다.')
@@ -204,11 +217,28 @@ class User(BaseModel, UserMixin):
     
     def have_admin_check(self):
         return self.admin_check
+    
+    def get_limit(self):
+        if self.can_upload():
+            return FILE_UPLOAD_LIMIT - self.file_upload_limit
+        else:
+            return 0.0
+    
+    def can_upload(self):
+        return self.file_upload_limit < FILE_UPLOAD_LIMIT
+    
+    def update_limit(self, upload_size):
+        self.file_upload_limit += upload_size
+        self.commit()
+    
+    @classmethod
+    def reset_all_limit(cls):
+        cls.query_with().update({'file_upload_limit': 0.0})
+        cls.commit()
 
-    def update_instance(self):
+    def update_count(self):
         self.posts_count = self.user_posts.count()
         self.comments_count = self.user_comments.count()
-        super().update_instance()
 
     def __repr__(self):
         return super().__repr__() + f'{self.username}'         
@@ -230,12 +260,23 @@ class Post(BaseModel):
 
     comments_count = db.Column(db.Integer, default=0)
     post_comments = db.relationship('Comment', back_populates='post', cascade='delete, delete-orphan', lazy='dynamic')
+    files = db.relationship('File', back_populates='post', cascade='delete, delete-orphan', lazy='dynamic')
+
+    def update_count(self):
+        self.comments_count = self.post_comments.count()
 
     def __repr__(self):
         return super().__repr__() + f'{self.title}'         
 
     def __str__(self):
         return super().__str__() + f'{self.title}'     
+    
+class File(BaseModel):
+    __tablename__ = 'file'
+    name = db.Column(db.String(150), nullable=False)
+    size = db.Column(db.Float, nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_file_post', ondelete='CASCADE'), nullable=False)
+    post = db.relationship('Post', back_populates='files')
 
 class Category(BaseModel):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
@@ -258,13 +299,12 @@ class Comment(BaseModel):
 
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_comment_post', ondelete='CASCADE'), nullable=False)  
     post = db.relationship('Post', back_populates='post_comments')
-    
 
     def __repr__(self):
-        return super().__repr__() + f'{self.post_id} \n{self.content}'       
+        return super().__repr__() + f'post_id: {self.post_id}, {self.content}'       
 
     def __str__(self):
-        return super().__str__() + f'{self.post_id} \n{self.content}' 
+        return super().__str__() + f'post_id: {self.post_id}, {self.content}' 
 
 class Message(BaseModel):
     __tablename__ = 'message'
@@ -282,6 +322,7 @@ def get_model(arg):
     models = {
         'user': User,
         'post': Post,
+        'file': File,
         'category': Category,
         'comment': Comment,
         'message': Message,
@@ -289,32 +330,15 @@ def get_model(arg):
     return models[arg]
 
 from sqlalchemy.event import listens_for
-from sqlalchemy.orm import object_session
 @listens_for(db.session, 'before_flush')
 def after_insert_and_delete(session, flush_context, instances):
-    for obj in session.new | session.deleted:
-        if isinstance(obj, get_model('comment')):
-            if obj.post_id in [x.id for x in session.deleted if isinstance(x, get_model('post'))]:
-                # post 삭제 -> comment 삭제인 경우
-                user = get_model('user').get_instance(id=obj.author_id)
-                post_user_comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(author_id=obj.author_id, post_id=obj.post_id).scalar()
-                user.comments_count -= post_user_comments_count
-            else:
-                post = get_model('post').get_instance(id=obj.post_id)
-                post.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(post_id=obj.post_id).scalar()
-                user = get_model('user').get_instance(id=obj.author_id)
-                user.comments_count = object_session(obj).query(func.count(get_model('comment').id)).filter_by(author_id=obj.author_id).scalar()
-                if obj in session.new:      # 추가
-                    post.comments_count += 1
-                    user.comments_count += 1
-                else:                       # 삭제
-                    post.comments_count -= 1
-                    user.comments_count -= 1
-
-        elif isinstance(obj, get_model('post')):
-            user = user = get_model('user').get_instance(id=obj.author_id)
-            user.posts_count = object_session(obj).query(func.count(get_model('post').id)).filter_by(author_id=obj.author_id).scalar()
-            if obj in session.new:      # 추가
-                user.posts_count += 1
-            else:                       # 삭제
-                user.posts_count -= 1
+    for obj in session.deleted | session.new:
+        user = get_model('user').get_instance_by_id_with(id=obj.author_id)
+        num = 1 if obj in session.new else -1
+        if isinstance(obj, get_model('post')):
+            user.posts_count += num
+        elif isinstance(obj, get_model('comment')):
+            user.comments_count += num
+            if obj in session.new:
+                post = get_model('post').get_instance_by_id_with(id=obj.post_id)
+                post.comments_count += num

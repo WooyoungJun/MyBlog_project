@@ -35,6 +35,7 @@ def create_app(config, mode):
 
     # jinja2 필터 등록
     app.jinja_env.filters['datetime'] = lambda x: x.strftime('%y.%m.%d %H:%M')
+    app.jinja_env.filters['round'] = lambda x: round(x, 2)
 
     # login_manager 설정 코드
     set_login_manager(app)
@@ -51,7 +52,10 @@ def create_app(config, mode):
     # import logging
     # logging.basicConfig()
     # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-        
+    
+    # 스케줄러 등록
+    set_scheduler(app)
+
     return app
 
 def add_admin_view(app):
@@ -78,7 +82,7 @@ def set_login_manager(app):
     # login_required 실행 전 사용자 정보 조회 메소드
     @login_manager.user_loader
     def user_loader(user_id):
-        return get_model('user').get_instance_by_id(int(user_id))
+        return get_model('user').get_instance_by_id_with(int(user_id))
     
 def add_cli(app):
     from click import command               # 커맨드 라인 인터페이스 작성
@@ -105,7 +109,7 @@ def add_cli(app):
                 admin_check = admin_check
             )
             admin_user.add_instance()
-            print(f"User created!\n{admin_user.id}: {admin_user.username}")
+            print(f"User created!\n", admin_user)
         except IntegrityError:
             # 빨간색으로 표시
             print('\033[31m' + "Error : username or email already exists.")
@@ -116,9 +120,32 @@ def add_cli(app):
         for _, model in get_all_admin_models():
             instances = model.get_all()
             for instance in instances:
-                instance.update_instance()
+                instance.fill_none_fields()
+                if hasattr(instance, 'update_count'):
+                    instance.update_count()
+            model.commit()
             print(f"Model {model.__name__} update finished!")
 
     # app에 등록
     app.cli.add_command(create_user)
     app.cli.add_command(update_all_model_instances)
+
+def set_scheduler(app):
+    from flask_apscheduler import APScheduler
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    scheduler = APScheduler(scheduler=BackgroundScheduler(daemon=True, timezone='Asia/Seoul'))
+    scheduler.init_app(app)
+    scheduler.start()
+
+    def reset_upload_limit():
+        with app.app_context():
+            get_model('user').reset_all_limit()
+            print('파일 업로드 할당량 초기화 완료!')
+
+    scheduler.add_job(
+        id='reset_upload_limit', 
+        func=reset_upload_limit, 
+        trigger=CronTrigger(hour=0),
+    )
+

@@ -76,7 +76,7 @@ def signup():
 @auth.route('/user-delete', methods=['DELETE'])
 @login_required
 def user_delete():
-    user = get_model('user').get_instance_by_id(current_user.id)
+    user = get_model('user').get_instance_by_id_with(current_user.id)
     if not user: return jsonify(message='error'), 404
     logout_user()
     
@@ -109,7 +109,7 @@ def mypage():
         return render_template_auth('mypage.html', **params)
     
     delete_session()
-    current_user.save_instance(create_permission=True)
+    current_user.update_instance(create_permission=True)
     Msg.success_msg('이메일 인증 완료')
     return render_template_auth('mypage.html')
 
@@ -128,7 +128,7 @@ def user_info_edit():
     form = UserInfoForm()
 
     if form.valid() and not get_model('user').duplicate_check(username=form.username.data):  
-        current_user.save_instance(username=form.username.data)
+        current_user.update_instance(username=form.username.data)
         Msg.success_msg('이름 수정 완료!')
 
     return redirect(url_for('auth.mypage'))
@@ -157,7 +157,7 @@ def callback(domain, type):
             2. login_user(user)
         '''
         email = user_data.get('email')
-        user = get_model('user').get_instance(email=user_data['email'])
+        user = get_model('user').get_instance_with(email=user_data['email'])
         if not user: return redirect(url_for('auth.login'))
         if not domain_match(domain, user): return redirect(url_for('auth.login'))
         

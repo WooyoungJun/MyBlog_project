@@ -1,15 +1,16 @@
 from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
-from .file_upload import file_to_s3
+from .file import upload_files, generate_download_urls
 from .forms import CategoryForm, CommentForm, ContactForm, PostForm
 from .models import get_model
 from .utils import (
     Msg, HttpMethod, 
     admin_required,
-    render_template_with_user, login_and_create_permission_required,          # 데코레이터 함수
+    render_template_with_user, 
+    login_and_create_permission_required,    # 데코레이터 함수
 
-    is_owner, error                                                 # 기타
+    is_owner, error                          # 기타
 )
 
 views = Blueprint('views', __name__)
@@ -18,28 +19,6 @@ BASE_VIEWS_DIR = 'views/'
 def render_template_views(template_name_or_list, **context):
     context['template_name_or_list'] = BASE_VIEWS_DIR + template_name_or_list
     return render_template_with_user(**context)
-
-# ------------------------------------------------------------ file upload 페이지 ------------------------------------------------------------
-@views.route('/file-upload', methods=['GET', 'POST'])
-@login_and_create_permission_required
-def file_upload():
-    if HttpMethod.get(): return render_template_views('file_upload.html')
-    
-    files = request.files.getlist('files')
-    if not files:
-        Msg.error_msg('파일을 선택해주세요')
-        return render_template_views('file_upload.html')
-    
-    msg = ''
-    for file in files:
-        try:
-            msg += file_to_s3(file) + ' '
-        except Exception as e:
-            Msg.error_msg(str(e))
-        finally:
-            if msg:
-                Msg.success_msg(f'{msg}upload 완료')
-            return render_template_views('file_upload.html')
 
 # ------------------------------------------------------------ posts_list 출력 페이지 ------------------------------------------------------------
 @views.route('/')
@@ -57,7 +36,7 @@ def home():
 @views.route('/user_posts/<int:user_id>')
 def user_posts(user_id):
     # 쿼리 최대 4번 = selected_user 1번 + user_posts 2번 + user 1번
-    selected_user = get_model('user').get_instance_by_id(user_id)
+    selected_user = get_model('user').get_instance_by_id_with(user_id)
     if not selected_user: return error(404)
 
     user_posts = get_model('post').get_all_with('category', author_id=user_id)
@@ -71,7 +50,7 @@ def user_posts(user_id):
 @views.route('/posts-list/<int:category_id>')
 def posts_list(category_id):
     # 쿼리 최대 4번 = selected_category 1번 + category_posts 2번 + user 1번
-    selected_category = get_model('category').get_instance_by_id(category_id)
+    selected_category = get_model('category').get_instance_by_id_with(category_id)
     if not selected_category: return error(404)
 
     category_posts = get_model('post').get_all_with('user', 'category', category_id=category_id)
@@ -111,7 +90,7 @@ def category_make():
 @admin_required
 def category_delete():
     ids = request.json.get('ids', [])
-    categories = get_model('category').find_by_ids(ids)
+    categories = get_model('category').get_all_by_ids(ids)
     if not categories: return Msg.delete_error('카테고리를 선택해주세요.')
 
     delete_category = ''
@@ -150,12 +129,14 @@ def post(post_id):
     post = get_model('post').get_instance_by_id_with(post_id, 'user', 'category')
     if not post: return error(404)
     
-    post_comments = get_model('comment').get_all_with('user', post_id=post_id)
+    download_urls = generate_download_urls(post.files)
+
     return render_template_views(
         'post_read.html', 
         post=post,
         form=form,
-        comments=post_comments,
+        comments=post.post_comments,
+        download_urls=download_urls,
     )
 
 @views.route('/post-create', methods=['GET', 'POST'])
@@ -172,13 +153,17 @@ def post_create():
             form=form, 
             type='Create',
         )
-    
-    get_model('post')(
+
+    post = get_model('post')(
         title=form.title.data,
         content=form.content.data,
         category_id=form.category_id.data,
         author_id=current_user.id,
     ).add_instance()
+
+    files = request.files.getlist('files')
+    upload_files(files, post_id = post.id)
+
     Msg.success_msg('Post 작성 완료!')
     return redirect(url_for('views.home'))
 
@@ -195,7 +180,7 @@ def post_edit(post_id):
     # GET 요청 = 쿼리 최대 3번 = user 1번 + post 1번 + category 1번
     # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
-    post = get_model('post').get_instance_by_id(post_id)
+    post = get_model('post').get_instance_by_id_with(post_id)
     if not post: return error(404)
     if not is_owner(post.author_id): return error(403)
 
@@ -205,7 +190,7 @@ def post_edit(post_id):
     
     if form.invalid(): return render_template_views('post_write.html', **params)
     
-    post.save_instance(
+    post.update_instance(
         title=form.title.data, 
         content=form.content.data, 
         category_id=form.category_id.data
@@ -219,7 +204,7 @@ def post_delete(post_id):
     # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
     # + comments 관련 user update N번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
-    post = get_model('post').get_instance_by_id(post_id)
+    post = get_model('post').get_instance_by_id_with(post_id)
     if not post: return Msg.delete_error('존재하지 않는 게시글입니다.')
     if not is_owner(post.author_id): return error(403)
 
@@ -251,12 +236,12 @@ def comment_edit(comment_id):
     
     # POST 요청 = 쿼리 최대 4번 = user 1번 + comment update 1번
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
-    comment = get_model('comment').get_instance_by_id(comment_id)
+    comment = get_model('comment').get_instance_by_id_with(comment_id)
     if not comment: return error(404)
     if not is_owner(comment.author_id): return error(403)
 
     if form.valid():
-        comment.save_instance(content=form.content.data)
+        comment.update_instance(content=form.content.data)
         Msg.success_msg('댓글 수정 완료!')
 
     return redirect(url_for('views.post', post_id=comment.post_id))
@@ -267,7 +252,7 @@ def comment_edit(comment_id):
 def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
-    comment = get_model('comment').get_instance_by_id(comment_id)
+    comment = get_model('comment').get_instance_by_id_with(comment_id)
     if not comment: return Msg.delete_error('존재하지 않는 댓글입니다.')
     if not is_owner(comment.author_id): return error(403)
 

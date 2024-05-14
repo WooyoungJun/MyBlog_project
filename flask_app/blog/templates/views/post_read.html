@@ -19,7 +19,9 @@
                         <button class="btn btn-info" id="edit_button">
                             <a href="{{url_for('views.post_edit', post_id=post.id)}}">Edit</a>
                         </button>
-                        <button onclick="onDeletePost()" class="btn btn-danger" id="delete_button">Delete</button>
+                        <button data-post-id="{{post.id}}" onclick="onDeletePost(this)" class="btn btn-danger" id="delete_button">
+                            Delete
+                        </button>
                         {% endif %}
                     </span>
                     <span class="subheading"></span>
@@ -28,49 +30,15 @@
         </div>
     </div>
 </header>
-
-<script>
-    function onDeletePost(){
-        let confirm = window.confirm('정말 삭제하시겠습니까?');
-        if (confirm) {
-            let postId = document.getElementById('post_data').getAttribute('data_post_id');
-            fetch('/post-delete/' + postId, {method:"DELETE"})
-            .then(response => {
-                if (response.status === 200){
-                    window.location.href = '/';
-                } else {
-                    window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error(error);
-            });
-        }
-    }
-    function onDeleteComment(button){
-        let confirm = window.confirm('정말 삭제하시겠습니까?');
-        if (confirm) {
-            let commentId = button.getAttribute('data_comment_id');
-            fetch('/comment-delete/' + commentId, {method:"DELETE"})
-            .then(response => {
-                window.location.reload();
-            })
-            .catch(error => {
-                console.error(error);
-            });
-        }
-    }
-</script>
 {% endblock %}
 
 {% block content %}
-<!-- data 태그 -->
-<div id="post_data" data_post_id="{{post.id}}"></div>
 <!-- 본문 -->
 <article class="mb-4">
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 justify-content-center">
             <div class="col-md-10 col-lg-8 col-xl-7" id="content" name="content">
+                <div id="imageContainer" data-urls="{{','.join(download_urls) | safe}}"></div>
                 <p>{{ post.content }}</p>
             </div>
         </div>
@@ -111,7 +79,7 @@
                                             <button class="btn btn-secondary" style="padding: 6px;" data-bs-toggle="modal" data-bs-target="#editCommentModal{{ comment.id }}">
                                                 <i class="fa-solid fa-pencil"></i>
                                             </button>
-                                            <button data_comment_id="{{comment.id}}" onclick="onDeleteComment(this)" class="btn btn-danger" style="padding: 6px;">
+                                            <button data-comment-id="{{comment.id}}" onclick="onDeleteComment(this)" class="btn btn-danger" style="padding: 6px;">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         </p>
@@ -150,4 +118,56 @@
         </div>
     </div>
 </section>
+<script>
+function onDeletePost(button){
+    if (check_confirm('게시글을 삭제하시겠습니까?')){
+        const postId = button.getAttribute('data-post-id');
+        fetch('/post-delete/' + postId, {method:"DELETE"})
+        .then(response => {
+            if (response.status === 200){
+                window.location.href = '/';
+            } else {
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error(error);
+        });
+    }
+}
+function onDeleteComment(button){
+    if (check_confirm('댓글을 삭제하시겠습니까?')){
+        const commentId = button.getAttribute('data-comment-id');
+        fetch('/comment-delete/' + commentId, {method:"DELETE"})
+        .then(response => {
+            window.location.reload();
+        })
+        .catch(error => {
+            console.error(error);
+        });
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const imageContainer = document.getElementById('imageContainer');
+    const download_urls = imageContainer.getAttribute('data-urls').split(',');
+    if (download_urls[0].length == 0){return;}
+    download_urls.forEach(function(url) {
+        fetch(url, {
+            headers: {
+                'Access-Control-Allow-Origin': window.location.origin
+            } 
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            img.style.maxWidth = '80%';
+            imageContainer.appendChild(img);
+        })
+        .catch(error => {
+            console.error('Image loading error:', error);
+        });
+    });
+})
+</script>
 {% endblock %}
