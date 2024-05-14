@@ -8,7 +8,7 @@ services:
             dockerfile: Dockerfile # 도커 파일 이름 지정
         container_name: flask_app # 컨테이너 이름
         restart: always
-        command: gunicorn -b 0.0.0.0:8888 --env FLASK_DEBUG=0 --no-reload app:app
+        command: gunicorn -b 0.0.0.0:8888 --env FLASK_DEBUG=0 app:app
         volumes:
             - /home/ubuntu/MyBlog_project/flask_app/blog/db:/flask_app/blog/db
             - /home/ubuntu/MyBlog_project/flask_app/migrations:/flask_app/migrations
