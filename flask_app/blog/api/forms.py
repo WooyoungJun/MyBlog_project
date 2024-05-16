@@ -1,9 +1,9 @@
 from flask_login import current_user
 from flask_wtf import FlaskForm
-from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField, MultipleFileField
+from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
-from .utils import Msg
+from .utils.etc import Msg
 from .models import get_model
 
 class BaseForm(FlaskForm):

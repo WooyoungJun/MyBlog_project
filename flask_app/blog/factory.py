@@ -16,7 +16,7 @@ def create_app(config, mode):
 
     if mode != 'TEST':
         # third-party 관련 환경 변수 셋팅
-        from .api.third_party import set_domain_config, make_auth_url_and_set
+        from .api.utils.third_party import set_domain_config, make_auth_url_and_set
         set_domain_config(app)
         make_auth_url_and_set(app)
 
@@ -30,7 +30,7 @@ def create_app(config, mode):
     # blueprint 등록 코드, url_prefix를 기본으로 함
     add_blueprint(app)
 
-    from .api.error import error_handler_setting
+    from .api.utils.error import error_handler_setting
     error_handler_setting(app)
 
     # jinja2 필터 등록
@@ -42,11 +42,6 @@ def create_app(config, mode):
 
     # create_user, update_all_model_instances 명령어 추가
     add_cli(app)
-
-    # 쌓인 오류 메세지 삭제
-    from .api.email import delete_error_email
-    with app.app_context():
-        delete_error_email()
 
     # sqlalchemy 쿼리 로깅 확인용 
     # import logging
@@ -61,11 +56,11 @@ def create_app(config, mode):
 def add_admin_view(app):
     # admin 페이지에 모델뷰 추가
     from flask_admin import Admin
-    from .api.models import db
+    from .api.models import get_session
     from .api.admin_models import CustomAdminIndexView
     admin = Admin(app, name='MyBlog', template_mode='bootstrap3', index_view=CustomAdminIndexView())
     for admin_model, model in get_all_admin_models():
-        admin.add_view(admin_model(model, db.session))
+        admin.add_view(admin_model(model, get_session()))
 
 def add_blueprint(app):
     from .api.views import views
@@ -138,14 +133,25 @@ def set_scheduler(app):
     scheduler.init_app(app)
     scheduler.start()
 
-    def reset_upload_limit():
+    def reset_upload_limit(app):
         with app.app_context():
             get_model('user').reset_all_limit()
             print('파일 업로드 할당량 초기화 완료!')
-
+    
     scheduler.add_job(
         id='reset_upload_limit', 
         func=reset_upload_limit, 
+        args=(app,),
         trigger=CronTrigger(hour=0),
     )
+
+    # 쌓인 오류 메세지 삭제
+    from .api.utils.email import delete_error_email
+    scheduler.add_job(
+        id='delete_error_email', 
+        func=delete_error_email,
+        args=(app,), 
+        trigger=CronTrigger(hour=12),
+    )
+    
 

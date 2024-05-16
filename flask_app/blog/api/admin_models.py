@@ -1,13 +1,12 @@
 from flask import abort
+from flask_wtf import FlaskForm
+from flask_login import current_user
 from flask_admin import AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from flask_login import current_user
-from flask_wtf import FlaskForm
-from werkzeug.security import generate_password_hash
 from wtforms import BooleanField, StringField, SelectField
 
+from .utils.etc import Msg
 from .forms import CommentForm, SignUpForm, PostForm
-from .utils import Msg
 from .models import get_model
 
 class CustomAdminIndexView(AdminIndexView):
@@ -57,7 +56,7 @@ class UserAdmin(AdminBase):
     # 3. 사용자가 패스워드를 입력하고 저장할 때 해시화하여 저장하는 로직 추가
     def on_model_change(self, form, model, is_created):
         if is_created:
-            model.password = generate_password_hash(model.password)
+            model.set_password(form.password)
         model.update_count()
         super().on_model_change(form, model, is_created)
     

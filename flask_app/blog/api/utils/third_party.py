@@ -1,11 +1,9 @@
 from base64 import urlsafe_b64decode
-from random import randint
 from urllib.parse import urlencode
 from flask import json, current_app, request
 import requests
 
-from .models import get_model
-from .utils import Msg
+from .etc import Msg
 
 def set_domain_config(app):
     config = app.config
@@ -90,11 +88,3 @@ def domain_match(domain, user):
         Msg.error_msg('가입한 도메인이 아닙니다.')
         return False
     return True
-
-def make_name(name):
-    new_name = name
-    while get_model('user').is_in_model(username=new_name):
-        # name 존재하면 True => 계속 반복
-        random_number = randint(100000, 999999) 
-        new_name = name + str(random_number)  
-    return new_name  
