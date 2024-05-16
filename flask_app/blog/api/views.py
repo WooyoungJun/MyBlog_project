@@ -2,7 +2,7 @@ from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
 from .utils.decorator import (
-    admin_required,
+    login_and_admin_required,
     render_template_with_user, 
     login_and_create_permission_required,
 )
@@ -76,7 +76,7 @@ def category():
     )
 
 @views.route('/category-make', methods=['POST'])
-@admin_required
+@login_and_admin_required
 def category_make():
     form = CategoryForm()
 
@@ -89,7 +89,7 @@ def category_make():
     return redirect(url_for('views.category'))
 
 @views.route('/category-delete', methods=['DELETE'])
-@admin_required
+@login_and_admin_required
 def category_delete():
     ids = request.json.get('ids', [])
     categories = get_model('category').get_all_by_ids(ids)
@@ -207,8 +207,8 @@ def post_delete(post_id):
     # + comments 관련 user update N번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     post = get_model('post').get_instance_by_id_with(post_id)
-    if not post: return Msg.delete_error('존재하지 않는 게시글입니다.')
-    if not is_owner(post.author_id): return error(403)
+    if not post: return Msg.delete_error()
+    if not is_owner(post.author_id): return Msg.delete_error('권한이 없습니다.', 403)
 
     post.delete_instance()
     return Msg.delete_success('게시물이 성공적으로 삭제되었습니다')
@@ -255,8 +255,8 @@ def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     comment = get_model('comment').get_instance_by_id_with(comment_id)
-    if not comment: return Msg.delete_error('존재하지 않는 댓글입니다.')
-    if not is_owner(comment.author_id): return error(403)
+    if not comment: return Msg.delete_error()
+    if not is_owner(comment.author_id): return Msg.delete_error('권한이 없습니다.', 403)
 
     comment.delete_instance()
     return Msg.delete_success('댓글이 성공적으로 삭제되었습니다.')
