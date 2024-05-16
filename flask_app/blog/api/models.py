@@ -333,11 +333,14 @@ from sqlalchemy.event import listens_for
 @listens_for(db.session, 'before_flush')
 def after_insert_and_delete(session, flush_context, instances):
     for obj in session.deleted | session.new:
+        if not isinstance(obj, (get_model('post'), get_model('comment'))): return
+        
         user = get_model('user').get_instance_by_id_with(id=obj.author_id)
         num = 1 if obj in session.new else -1
         if isinstance(obj, get_model('post')):
             user.posts_count += num
         elif isinstance(obj, get_model('comment')):
+            user = get_model('user').get_instance_by_id_with(id=obj.author_id)
             user.comments_count += num
             if obj in session.new:
                 post = get_model('post').get_instance_by_id_with(id=obj.post_id)
