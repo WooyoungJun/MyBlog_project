@@ -81,12 +81,11 @@ def signup():
 @login_required
 def user_delete():
     user = get_model('user').get_instance_by_id_with(current_user.id)
-    if not user: return jsonify(message='error'), 404
+    if not user: return Msg.delete_error()
     logout_user()
     
     user.delete_instance()
-    Msg.success_msg(f'{str(user)} 성공적으로 탈퇴하였습니다.')
-    return jsonify(message='success'), 200
+    return Msg.delete_success(f'{str(user)} 성공적으로 탈퇴하였습니다.')
 
 # ------------------------------------------------ mypage, 이메일 인증 ------------------------------------------------
 @auth.route('/mypage', methods=['GET', 'POST'])

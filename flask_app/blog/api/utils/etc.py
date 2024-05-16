@@ -24,14 +24,14 @@ class Msg:
         flash(msg, category="error")
 
     @classmethod
-    def delete_success(cls, msg):
-        cls.success_msg(msg)
+    def delete_success(cls, msg=''):
+        if msg: cls.success_msg(msg)
         return jsonify(message='success'), 200
 
     @classmethod
-    def delete_error(cls, msg):
-        cls.error_msg(msg)
-        return jsonify(message='error'), 404
+    def delete_error(cls, msg='', code=404):
+        if msg: cls.error_msg(msg)
+        return jsonify(message='error'), code
 
 def is_owner(id):
     return id == current_user.id

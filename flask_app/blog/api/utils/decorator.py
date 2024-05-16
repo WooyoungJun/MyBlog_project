@@ -5,8 +5,9 @@ from functools import wraps
 from .etc import Msg
 from .error import error
 
-def admin_required(f):
+def login_and_admin_required(f):
     @wraps(f)
+    @login_required
     def decorated_function(*args, **kwargs):
         if not current_user.have_admin_check(): return error(403)
         return f(*args, **kwargs)
