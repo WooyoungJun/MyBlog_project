@@ -1,7 +1,10 @@
-from flask import redirect, url_for
+from flask import abort, redirect, url_for
 
-from .utils import Msg
+from .etc import Msg
 
+def error(code):
+    abort(code)
+    
 def error_handler_setting(app):
     @app.errorhandler(400)
     def handle_bad_request_error(e):

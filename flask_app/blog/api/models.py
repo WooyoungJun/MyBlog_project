@@ -5,8 +5,11 @@ from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import selectinload, joinedload
 from json import dumps
+from random import randint
 
-from .utils import Msg, get_korea_time, get_s3_config, make_new_file_name
+from .utils.etc import (
+    Msg, get_korea_time, get_s3_config, make_new_file_name
+)
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -17,6 +20,9 @@ def db_migrate_setup(app):
     with app.app_context():
         # db.Model 상속한 모든 클래스 추적해서 테이블 생성
         db.create_all()
+
+def get_session():
+    return db.session
 
 # relationship(관계 맺는 모델 이름, back_populates=연결 필드 이름)
 # Cascade = 1:N 관계에서 1쪽에 설정
@@ -184,8 +190,11 @@ class User(BaseModel, UserMixin):
     file_upload_limit = db.Column(db.Float, default=0.0)
 
     def __init__(self, password, **kwargs):
-        self.password = generate_password_hash(password)
+        self.set_password(password)
         super().__init__(**kwargs)
+    
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
     
     @classmethod
     def user_check(cls, email, password):
@@ -195,6 +204,18 @@ class User(BaseModel, UserMixin):
             if not check_password_hash(password, user.password): return user
             else: return Msg.error_msg('비밀번호가 틀렸습니다.')
         else: return Msg.error_msg('가입되지 않은 이메일입니다.')
+
+    @classmethod
+    def make_new_name(cls, name):
+        new_name = name
+        while cls.is_in_model(username=new_name):
+            random_number = randint(100000, 999999)
+            new_name = name + str(random_number)
+        return new_name
+    
+    @classmethod
+    def is_in_model(cls, **kwargs):
+        return cls.query_with().filter_by(**kwargs).first() is not None
 
     def update_count(self):
         self.posts_count = self.user_posts.count()

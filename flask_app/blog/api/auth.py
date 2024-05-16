@@ -2,18 +2,22 @@ from secrets import token_hex
 from flask import Blueprint, jsonify, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
-from .utils import (
-    Msg, HttpMethod,
+from .utils.decorator import (
+    login_and_not_have_create_permission_required,
     logout_required, 
-    login_and_not_have_create_permission_required, render_template_with_user,                     # 데코레이터 함수
-
+    render_template_with_user,
 )
-from .email import (
-    send_mail, session_update, delete_session, get_otp, get_remain_time,                # email 인증
+from .utils.email import (
+    send_mail, 
+    session_update, delete_session,
+    get_otp, get_remain_time,        
 )
-from .third_party import (
+from .utils.third_party import (
     get_auth_url, get_access_token, get_domain_num, get_user_info, 
-    make_name, not_exist_domain, domain_match                                           # third-party 인증
+    not_exist_domain, domain_match                                             # third-party 인증
+)
+from .utils.etc import (
+    Msg, HttpMethod,                 
 )
 from .forms import LoginForm, OtpForm, SignUpForm, UserInfoForm
 from .models import get_model
@@ -176,8 +180,9 @@ def callback(domain, type):
         if get_model('user').duplicate_check(email=email): return redirect(url_for('auth.signup'))
 
         username = user_data.get('name', user_data.get('nickname'))
+        username = get_model('user').make_new_name(username)
         get_model('user')(
-            username=make_name(username),
+            username=username,
             email=email,
             password=token_hex(16),
             create_permission=True,

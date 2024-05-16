@@ -1,16 +1,19 @@
 from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
-from .forms import CategoryForm, CommentForm, ContactForm, PostForm
-from .models import get_model
-from .utils import (
-    Msg, HttpMethod, 
+from .utils.decorator import (
     admin_required,
     render_template_with_user, 
-    login_and_create_permission_required,       # 데코레이터 함수
-
-    is_owner, error, generate_download_urls     # 기타
+    login_and_create_permission_required,
 )
+from .utils.error import (
+    error,
+)
+from .utils.etc import(
+    Msg, HttpMethod, is_owner, generate_download_urls
+)
+from .forms import CategoryForm, CommentForm, ContactForm, PostForm
+from .models import get_model
 
 views = Blueprint('views', __name__)
 BASE_VIEWS_DIR = 'views/'

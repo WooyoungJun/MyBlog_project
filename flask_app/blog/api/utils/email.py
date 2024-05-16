@@ -11,7 +11,8 @@ def send_mail():
     msg['Subject'] = '[MyBlog 이메일 인증]'
 
     asyncio.gather(smtp_send_mail_async(msg))
-    
+    print('otp 이메일 전송 요청 완료!')
+
     session[f'otp_{current_user.email}'] = otp  # 세션에 인증번호 저장
     session[f'time_{current_user.email}'] = int(time.time()) + current_app.config['MAIL_LIMIT_TIME']  # 인증번호 제한 시간
 
@@ -19,21 +20,22 @@ async def smtp_send_mail_async(msg):
     from smtplib import SMTP
     config = current_app.config
     smtp = SMTP(host=config['MAIL_SERVER'], port=config['MAIL_PORT'])
-    smtp.starttls() # TLS 암호화 보안 연결 설정
-    smtp.login(config['MAIL_USERNAME'], config['MAIL_PASSWORD'])
-
-    smtp.sendmail(config['MAIL_USERNAME'], current_user.email, msg.as_string())
+    await smtp.starttls() # TLS 암호화 보안 연결 설정
+    await smtp.login(config['MAIL_USERNAME'], config['MAIL_PASSWORD'])
+    await smtp.sendmail(config['MAIL_USERNAME'], current_user.email, msg.as_string())
     smtp.quit()
+    print('otp 이메일 전송 처리 완료!')
 
-def delete_error_email():
-    return asyncio.gather(imap_delete_error_mail())
+def delete_error_email(app):
+    with app.app_context():
+        asyncio.gather(imap_delete_error_mail())
+        print('쌓인 에러 메세지 삭제 요청 완료!')
 
 async def imap_delete_error_mail():
     from imaplib import IMAP4_SSL
     config = current_app.config
     imap = IMAP4_SSL('imap.gmail.com')
     await imap.login(config['MAIL_USERNAME'], config['MAIL_PASSWORD'])
-
     await imap.select('inbox')
     status, email_ids = await imap.search(None, '(FROM "mailer-daemon@googlemail.com")')
     if status == 'OK':
@@ -44,6 +46,7 @@ async def imap_delete_error_mail():
 
     imap.close() # 세션 종료
     imap.logout() # 연결 해제
+    print('쌓인 에러 메세지 삭제 처리 완료!')
 
 def session_update():
     session_otp = get_otp()
