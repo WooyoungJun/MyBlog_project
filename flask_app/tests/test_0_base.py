@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 from flask_login import login_user, logout_user
 
-from blog import create_app
+from blog.factory import create_app
 from blog.api.models import db, get_model
 from tests.test_config import TestConfig
 

@@ -40,8 +40,9 @@ class Config():
     from .production import AWS_ACCESS_KEY, AWS_SECRET_KEY
     S3_BUCKET_NAME = 'myblog-file-server'
     S3_DEFAULT_DIRS = {
-        'DEVELOPMENT_DIR': 'DEVELOPMENT/',
-        'PRODUCTION_DIR': 'PRODUCTION/'
+        'DEVELOPMENT': 'DEVELOPMENT/',
+        'PRODUCTION': 'PRODUCTION/',
+        'TEST': 'TEST/'
     }
     S3_BUCKET_REGION = 'ap-northeast-2'
     S3 = client('s3', region_name = S3_BUCKET_REGION,

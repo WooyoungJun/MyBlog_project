@@ -1,16 +1,15 @@
 from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
-from .file import upload_files, generate_download_urls
 from .forms import CategoryForm, CommentForm, ContactForm, PostForm
 from .models import get_model
 from .utils import (
     Msg, HttpMethod, 
     admin_required,
     render_template_with_user, 
-    login_and_create_permission_required,    # 데코레이터 함수
+    login_and_create_permission_required,       # 데코레이터 함수
 
-    is_owner, error                          # 기타
+    is_owner, error, generate_download_urls     # 기타
 )
 
 views = Blueprint('views', __name__)
@@ -129,13 +128,13 @@ def post(post_id):
     post = get_model('post').get_instance_by_id_with(post_id, 'user', 'category')
     if not post: return error(404)
     
-    download_urls = generate_download_urls(post.files)
-
+    download_urls = generate_download_urls(post.files.all())
+    post_comments = get_model('comment').get_all_with('user', post_id=post_id)
     return render_template_views(
         'post_read.html', 
         post=post,
         form=form,
-        comments=post.post_comments,
+        comments=post_comments,
         download_urls=download_urls,
     )
 
@@ -162,7 +161,7 @@ def post_create():
     ).add_instance()
 
     files = request.files.getlist('files')
-    upload_files(files, post_id = post.id)
+    current_user.upload_files(files, post.id)
 
     Msg.success_msg('Post 작성 완료!')
     return redirect(url_for('views.home'))

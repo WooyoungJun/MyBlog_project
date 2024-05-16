@@ -107,7 +107,7 @@ class CommentTest(TestBase):
         self.assertEqual(response.json['message'], 'success')
         response = self.test_client.get('post/1')
         post_response = BeautifulSoup(response.data, 'html.parser')
-        self.assertIsNone(post_response.find(id='commentList')) # commentWrapper 없어야 함
+        self.assertIsNone(post_response.find(id='commentList')) # commentList 없어야 함
         self.assertIsNotNone(post_response.find(id='emptyComment')) # emptyComment 있어야 함
 
         # 2. 다른 유저 삭제 요청 후 확인
@@ -117,5 +117,5 @@ class CommentTest(TestBase):
         self.test_client.delete('/comment-delete/1') # 삭제 요청
         response = self.test_client.get('post/1')
         post_response = BeautifulSoup(response.data, 'html.parser')
-        self.assertIsNotNone(post_response.find(id='commentList')) # commentWrapper 있어야 함
+        self.assertIsNotNone(post_response.find(id='commentList')) # commentList 있어야 함
         self.assertIsNone(post_response.find(id='emptyComment')) # emptyComment 없어야 함
