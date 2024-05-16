@@ -69,14 +69,14 @@
             {% with messages = get_flashed_messages(with_categories=True) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <!-- 에러일 경우 -->
                         {% if category == "error" %}
+                            <!-- 에러일 경우 -->    
                             <div class="alert alert-danger alert-dismissable fade show" role="alert" style="text-align: center">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
-                        <!-- 성공일 경우 -->
                         {% else %}
+                            <!-- 성공일 경우 -->
                             <div class="alert alert-success alert-dismissable fade show" role="alert" style="text-align: center">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

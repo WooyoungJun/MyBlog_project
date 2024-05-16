@@ -10,7 +10,7 @@ def send_mail():
     msg = MIMEText(f'MyBlog 회원가입 \n인증번호를 입력하여 이메일 인증을 완료해 주세요.\n인증번호 :{otp}')
     msg['Subject'] = '[MyBlog 이메일 인증]'
 
-    asyncio.create_task(smtp_send_mail_async(msg))
+    asyncio.gather(smtp_send_mail_async(msg))
     
     session[f'otp_{current_user.email}'] = otp  # 세션에 인증번호 저장
     session[f'time_{current_user.email}'] = int(time.time()) + current_app.config['MAIL_LIMIT_TIME']  # 인증번호 제한 시간

@@ -2,15 +2,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import String, or_, func
 from flask_login import UserMixin
 from flask_migrate import Migrate
-from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import selectinload, joinedload
 from json import dumps
 
-from .utils import Msg
-
-# 한국 시간대 오프셋(UTC+9)을 생성합니다.
-KST_offset = timezone(timedelta(hours=9))
+from .utils import Msg, get_korea_time, get_s3_config, make_new_file_name
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -43,6 +39,7 @@ def db_migrate_setup(app):
 class BaseModel(db.Model):
     __abstract__ = True                                                             # 추상 클래스 설정
     id = db.Column(db.Integer, primary_key=True)                                    # primary key 설정
+    date_created = db.Column(db.DateTime, default=get_korea_time())
 
     @classmethod
     def get_query(cls, id, **kwargs):
@@ -54,7 +51,7 @@ class BaseModel(db.Model):
     
     @staticmethod
     def commit():
-        return db.session.commit()
+        db.session.commit()
     
     @staticmethod
     def instance_check(instance):
@@ -74,7 +71,8 @@ class BaseModel(db.Model):
     @classmethod
     def get_instance_with(cls, *relationships, **filter_conditions):
         options = cls.get_options(selectinload, *relationships)
-        instance =  cls.query_with().filter_by(**filter_conditions).options(*options).first()
+        instance =  cls.query_with()\
+            .filter_by(**filter_conditions).options(*options).first()
         cls.instance_check(instance)
         return instance
     
@@ -93,28 +91,14 @@ class BaseModel(db.Model):
     @classmethod
     def get_all_with(cls, *relationships, **filter_conditions):
         options = cls.get_options(selectinload, *relationships)
-        return cls.query_with().filter_by(**filter_conditions).options(*options).all() 
+        return cls.query_with()\
+            .filter_by(**filter_conditions).options(*options).all() 
 
     @classmethod
     def count_all(cls, *relationships, **filter_conditions):
         options = cls.get_options(selectinload, *relationships)
-        return cls.query_with(func.count(cls.id)).filter_by(**filter_conditions).count()
-    
-    @classmethod
-    def count_group_by(cls, *args, **filter_conditions):
-        relationships, group_bys = [], []
-        for arg in args:
-            if type(getattr(cls, arg).property) == type(db.relationship()):
-                relationships.append(arg)
-            else:
-                group_bys.append(arg)
-
-        options = cls.get_options(selectinload, *relationships)
-        group_by = [getattr(cls, attr) for attr in group_bys]
-
-        return cls.query_with().filter_by(**filter_conditions)\
-            .group_by(*group_by).options(*options)\
-            .with_entities(*group_by, func.count(cls.id)).all()
+        return cls.query_with(func.count(cls.id))\
+            .filter_by(**filter_conditions).options(*options).count()
 
     @classmethod
     def duplicate_check(cls, **kwargs):
@@ -186,7 +170,6 @@ class User(BaseModel, UserMixin):
     username = db.Column(db.String(150), unique=True)                               # username unique
     email = db.Column(db.String(150), unique=True)                                  # email unique
     password = db.Column(db.String(150))                                            # password 
-    date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))         # 회원가입 날짜, 시간 기록
     create_permission = db.Column(db.Boolean, default=False)                        # 글 작성 권한 여부
     admin_check = db.Column(db.Boolean, default=False)                              # 관리자 권한 여부
     auth_type = db.Column(db.Integer, default=0)                                    # 가입 type (0, 1, 2) = (홈페이지, 구글, 카카오)
@@ -197,6 +180,7 @@ class User(BaseModel, UserMixin):
     user_comments = db.relationship('Comment', back_populates="user", cascade='delete, delete-orphan', lazy='dynamic') 
     user_messages = db.relationship('Message', back_populates='user', cascade='delete, delete-orphan', lazy='dynamic')     
 
+    files = db.relationship('File', back_populates='user', cascade='delete, delete-orphan', lazy='dynamic')
     file_upload_limit = db.Column(db.Float, default=0.0)
 
     def __init__(self, password, **kwargs):
@@ -211,6 +195,10 @@ class User(BaseModel, UserMixin):
             if not check_password_hash(password, user.password): return user
             else: return Msg.error_msg('비밀번호가 틀렸습니다.')
         else: return Msg.error_msg('가입되지 않은 이메일입니다.')
+
+    def update_count(self):
+        self.posts_count = self.user_posts.count()
+        self.comments_count = self.user_comments.count()
     
     def have_create_permission(self):
         return self.create_permission
@@ -218,6 +206,7 @@ class User(BaseModel, UserMixin):
     def have_admin_check(self):
         return self.admin_check
     
+    # ---------------------- file 관련 ----------------------
     def get_limit(self):
         if self.can_upload():
             return FILE_UPLOAD_LIMIT - self.file_upload_limit
@@ -235,10 +224,26 @@ class User(BaseModel, UserMixin):
     def reset_all_limit(cls):
         cls.query_with().update({'file_upload_limit': 0.0})
         cls.commit()
+    
+    def upload_files(self, files, post_id):
+        '''
+        파일들 객체 생성 + s3에 업로드 + 일일 할당량 업데이트
+        '''
+        if self.get_limit() < sum(file.getbuffer().nbytes for file in files):
+            Msg.error_msg('일일 파일 업로드 할당량을 초과하였습니다.')
+            files = None
 
-    def update_count(self):
-        self.posts_count = self.user_posts.count()
-        self.comments_count = self.user_comments.count()
+        if not files or not files[0]: return
+
+        upload_size = 0.0
+        for file in files:
+            try:
+                upload_size += get_model('file').upload_to_s3(file, post_id, self.id)
+            except Exception as e:
+                Msg.error_msg(str(e) + f'{file.filename} upload 실패')
+
+        if upload_size == 0.0: return
+        self.update_limit(upload_size)
 
     def __repr__(self):
         return super().__repr__() + f'{self.username}'         
@@ -250,8 +255,7 @@ class Post(BaseModel):
     __tablename__ = 'post'                                                                          
     title = db.Column(db.String(150), nullable=False)                                               # 제목
     content = db.Column(db.Text, nullable=False)                                                    # 본문 내용
-    date_created = db.Column(db.DateTime, default=datetime.now(KST_offset))                         # 글 작성 시간
-
+    
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_post_user', ondelete='CASCADE'), nullable=False)                
     user = db.relationship('User', back_populates='user_posts')             
         
@@ -265,6 +269,13 @@ class Post(BaseModel):
     def update_count(self):
         self.comments_count = self.post_comments.count()
 
+    def before_new_flush(self):
+        user = get_model('user').get_instance_by_id_with(self.author_id)
+        user.posts_count += 1
+
+    def before_deleted_flush(self):
+        self.user.posts_count -= 1
+
     def __repr__(self):
         return super().__repr__() + f'{self.title}'         
 
@@ -275,8 +286,47 @@ class File(BaseModel):
     __tablename__ = 'file'
     name = db.Column(db.String(150), nullable=False)
     size = db.Column(db.Float, nullable=False)
+
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_file_user', ondelete='CASCADE'), nullable=False)                
+    user = db.relationship('User', back_populates='files')             
+    
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_file_post', ondelete='CASCADE'), nullable=False)
     post = db.relationship('Post', back_populates='files')
+
+    @classmethod
+    def upload_to_s3(cls, file, post_id, author_id):
+        '''
+        file 인스턴스 추가 + s3에 업로드
+        '''
+        s3, s3_bucket_name, s3_default_dir = get_s3_config()
+
+        new_file_name = make_new_file_name(file.filename, s3_default_dir)
+        file_size = file.getbuffer().nbytes
+        
+        cls(
+            name=new_file_name,
+            size=file_size,
+            post_id=post_id,
+            author_id=author_id
+        ).add_instance()
+        
+        s3.upload_fileobj(file, s3_bucket_name, s3_default_dir + new_file_name)
+        file.close()
+        return file_size
+
+    def before_deleted_flush(self):
+        s3, s3_bucket_name, s3_default_dir = get_s3_config()
+
+        try:
+            s3.delete_object(Bucket=s3_bucket_name, Key=s3_default_dir + self.name)
+        except Exception as e:
+            print('에러가 발생했습니다: ', str(e))
+
+    def __repr__(self):
+        return super().__repr__() + f'{self.name}'         
+
+    def __str__(self):
+        return super().__str__() + f'{self.name}' 
 
 class Category(BaseModel):
     __tablename__ = 'category'                                                                      # 테이블 이름 명시적 선언
@@ -292,13 +342,22 @@ class Category(BaseModel):
 class Comment(BaseModel):
     __tablename__ = 'comment'
     content = db.Column(db.Text(), nullable=False)                                                  # 댓글 내용
-    date_created = db.Column(db.DateTime(timezone=True), default=datetime.now(KST_offset))          # 댓글 생성 시간
-
+    
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_comment_user', ondelete='CASCADE'), nullable=False)  
     user = db.relationship('User', back_populates="user_comments")
 
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_comment_post', ondelete='CASCADE'), nullable=False)  
     post = db.relationship('Post', back_populates='post_comments')
+
+    def before_new_flush(self):
+        user = get_model('user').get_instance_by_id_with(self.author_id)
+        post = get_model('post').get_instance_by_id_with(self.post_id)
+        user.comments_count += 1
+        post.comments_count += 1
+
+    def before_deleted_flush(self):
+        self.user.comments_count -= 1
+        self.post.comments_count -= 1
 
     def __repr__(self):
         return super().__repr__() + f'post_id: {self.post_id}, {self.content}'       
@@ -331,17 +390,11 @@ def get_model(arg):
 
 from sqlalchemy.event import listens_for
 @listens_for(db.session, 'before_flush')
-def after_insert_and_delete(session, flush_context, instances):
-    for obj in session.deleted | session.new:
-        if not isinstance(obj, (get_model('post'), get_model('comment'))): return
-        
-        user = get_model('user').get_instance_by_id_with(id=obj.author_id)
-        num = 1 if obj in session.new else -1
-        if isinstance(obj, get_model('post')):
-            user.posts_count += num
-        elif isinstance(obj, get_model('comment')):
-            user = get_model('user').get_instance_by_id_with(id=obj.author_id)
-            user.comments_count += num
-            if obj in session.new:
-                post = get_model('post').get_instance_by_id_with(id=obj.post_id)
-                post.comments_count += num
+def before_flush(session, flush_context, instances):
+    for obj in session.deleted:
+        if hasattr(obj, 'before_deleted_flush'):
+            obj.before_deleted_flush()
+    
+    for obj in session.new:
+        if hasattr(obj, 'before_new_flush'):
+            obj.before_new_flush()

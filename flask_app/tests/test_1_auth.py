@@ -78,23 +78,23 @@ class AuthTest(TestBase):
     '''
     def test_3_make_category(self):
         # 1. make-category 페이지 접근 = 권한 오류 = redirect 302
-        response = self.test_client.get('/auth/make-category')
-        self.assertEqual(response.status_code, 302)
+        response = self.test_client.post('/category-make', data=dict(
+            name='category 1',
+        ))
+        self.assertIsNone(get_model('category').get_instance_by_id_with(1))
 
         # 2. 권한 변경 후 확인
         self.user1.update_instance(admin_check=True)
-        response = self.test_client.get('/auth/make-category')
-        self.assertEqual(response.status_code, 200)
 
         # 3. 카테고리 추가 후 db에 적용 잘 됐는지 확인
-        response = self.test_client.post('/auth/make-category', data=dict(
+        response = self.test_client.post('/category-make', data=dict(
             name='category 1',
         ))
         self.assertEqual(get_model('category').get_instance_by_id_with(1).name, 'category 1')
 
         # 4. category 페이지 접속했을 때 카테고리 목록이 잘 출력되는지 확인
         response = self.test_client.get('/category')
-        category_list = BeautifulSoup(response.data, 'html.parser').find(id='category_list')
+        category_list = BeautifulSoup(response.data, 'html.parser').find(id='categories')
         self.assertIn('category 1', category_list.text)
 
     '''
