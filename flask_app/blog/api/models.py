@@ -7,9 +7,8 @@ from sqlalchemy.orm import selectinload, joinedload
 from json import dumps
 from random import randint
 
-from .utils.etc import (
-    Msg, get_korea_time, get_s3_config, make_new_file_name
-)
+from .utils.etc import Msg, Etc
+
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -45,7 +44,7 @@ def get_session():
 class BaseModel(db.Model):
     __abstract__ = True                                                             # 추상 클래스 설정
     id = db.Column(db.Integer, primary_key=True)                                    # primary key 설정
-    date_created = db.Column(db.DateTime, default=get_korea_time())
+    date_created = db.Column(db.DateTime, default=Etc.get_korea_time())
 
     @classmethod
     def get_query(cls, id, **kwargs):
@@ -291,8 +290,7 @@ class Post(BaseModel):
         self.comments_count = self.post_comments.count()
 
     def before_new_flush(self):
-        user = get_model('user').get_instance_by_id_with(self.author_id)
-        user.posts_count += 1
+        self.user.posts_count += 1
 
     def before_deleted_flush(self):
         self.user.posts_count -= 1
@@ -314,21 +312,26 @@ class File(BaseModel):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', name='fk_file_post', ondelete='CASCADE'), nullable=False)
     post = db.relationship('Post', back_populates='files')
 
+    @staticmethod
+    def get_s3_config():
+        config = Etc.get_config()
+        return config['S3'], config['S3_BUCKET_NAME'], config['S3_DEFAULT_DIRS'][config['mode']]
+
     @classmethod
     def upload_to_s3(cls, file, post_id, author_id):
         '''
         file 인스턴스 추가 + s3에 업로드
         '''
-        s3, s3_bucket_name, s3_default_dir = get_s3_config()
+        s3, s3_bucket_name, s3_default_dir = cls.get_s3_config()
 
-        new_file_name = make_new_file_name(file.filename, s3_default_dir)
+        new_file_name = Etc.make_new_file_name(file.filename, s3_default_dir)
         file_size = file.getbuffer().nbytes
         
         cls(
             name=new_file_name,
             size=file_size,
             post_id=post_id,
-            author_id=author_id
+            author_id=author_id,
         ).add_instance()
         
         s3.upload_fileobj(file, s3_bucket_name, s3_default_dir + new_file_name)
@@ -336,7 +339,7 @@ class File(BaseModel):
         return file_size
 
     def before_deleted_flush(self):
-        s3, s3_bucket_name, s3_default_dir = get_s3_config()
+        s3, s3_bucket_name, s3_default_dir = self.get_s3_config()
 
         try:
             s3.delete_object(Bucket=s3_bucket_name, Key=s3_default_dir + self.name)
@@ -371,9 +374,8 @@ class Comment(BaseModel):
     post = db.relationship('Post', back_populates='post_comments')
 
     def before_new_flush(self):
-        user = get_model('user').get_instance_by_id_with(self.author_id)
+        self.user.comments_count += 1
         post = get_model('post').get_instance_by_id_with(self.post_id)
-        user.comments_count += 1
         post.comments_count += 1
 
     def before_deleted_flush(self):

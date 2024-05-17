@@ -1,24 +1,11 @@
 from secrets import token_hex
-from flask import Blueprint, jsonify, redirect, url_for
+from flask import Blueprint, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
-from .utils.decorator import (
-    login_and_not_have_create_permission_required,
-    logout_required, 
-    render_template_with_user,
-)
-from .utils.email import (
-    send_mail, 
-    session_update, delete_session,
-    get_otp, get_remain_time,        
-)
-from .utils.third_party import (
-    get_auth_url, get_access_token, get_domain_num, get_user_info, 
-    not_exist_domain, domain_match                                             # third-party 인증
-)
-from .utils.etc import (
-    Msg, HttpMethod,                 
-)
+from .utils.decorator import Deco
+from .utils.email import Email      
+from .utils.third_party import ThirdParty                                      
+from .utils.etc import Msg, HttpMethod
 from .forms import LoginForm, OtpForm, SignUpForm, UserInfoForm
 from .models import get_model
 
@@ -27,11 +14,11 @@ BASE_AUTH_DIR = 'auth/'
 
 def render_template_auth(template_name_or_list, **context):
     context['template_name_or_list'] = BASE_AUTH_DIR + template_name_or_list
-    return render_template_with_user(**context)
+    return Deco.render_template_with_user(**context)
 
 # ------------------------------------------------ 로그인, 로그아웃, 회원가입, 회원탈퇴 ------------------------------------------------
 @auth.route('/login', methods=['GET', 'POST'])
-@logout_required
+@Deco.logout_required
 def login():
     form = LoginForm()
     params = {
@@ -57,7 +44,7 @@ def logout():
     return redirect(url_for('views.home'))
 
 @auth.route('/signup', methods=['GET', 'POST'])
-@logout_required
+@Deco.logout_required
 def signup():
     form = SignUpForm()
     params = {
@@ -91,10 +78,10 @@ def user_delete():
 @auth.route('/mypage', methods=['GET', 'POST'])
 @login_required
 def mypage():
-    session_update()
+    Email.session_update()
     form = OtpForm()
-    session_otp = get_otp()
-    remain_time = get_remain_time()
+    session_otp = Email.get_otp()
+    remain_time = Email.get_remain_time()
     user_info_form = UserInfoForm()
     user_info_form.set_form_from_obj(current_user)
     params = {
@@ -111,16 +98,16 @@ def mypage():
         Msg.error_msg('otp 비밀번호가 일치하지 않습니다.')
         return render_template_auth('mypage.html', **params)
     
-    delete_session()
+    Email.delete_session()
     current_user.update_instance(create_permission=True)
     Msg.success_msg('이메일 인증 완료')
     return render_template_auth('mypage.html')
 
 @auth.route('/send-mail-otp')
-@login_and_not_have_create_permission_required
+@Deco.login_and_not_have_create_permission_required
 def send_mail_otp():
     try:
-        send_mail()
+        Email.send_mail()
         Msg.success_msg('인증번호 전송 완료')
     except Exception as e:
         Msg.error_msg(str(e))
@@ -138,20 +125,20 @@ def user_info_edit():
 
 # ------------------------------------------------ third-party 가입 ------------------------------------------------
 @auth.route('/<string:domain>/<string:type>')
-@logout_required
+@Deco.logout_required
 def auth_page(domain, type):
-    if not_exist_domain(domain): return redirect(url_for(f'auth.{type}'))
-    return redirect(get_auth_url(domain=domain, type=type))
+    if ThirdParty.not_exist_domain(domain): return redirect(url_for(f'auth.{type}'))
+    return redirect(ThirdParty.get_auth_url(domain=domain, type=type))
 
 @auth.route('/callback/<string:domain>/<string:type>')
-@logout_required
+@Deco.logout_required
 def callback(domain, type):
-    access_token = get_access_token(domain=domain, type=type)
+    access_token = ThirdParty.get_access_token(domain=domain, type=type)
     if access_token.status_code != 200:
         Msg.Msg.error_msg(f'ACCESS_TOKEN 에러 코드: {access_token.status_code}\n{access_token}')
         return redirect(url_for('views.home'))
     
-    user_data = get_user_info(access_token)
+    user_data = ThirdParty.get_user_info(access_token)
     print(user_data)
     if type == 'login':
         '''
@@ -162,7 +149,7 @@ def callback(domain, type):
         email = user_data.get('email')
         user = get_model('user').get_instance_with(email=user_data['email'])
         if not user: return redirect(url_for('auth.login'))
-        if not domain_match(domain, user): return redirect(url_for('auth.login'))
+        if not ThirdParty.domain_match(domain, user): return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
         Msg.success_msg('로그인 성공!')
@@ -185,7 +172,7 @@ def callback(domain, type):
             email=email,
             password=token_hex(16),
             create_permission=True,
-            auth_type=get_domain_num(domain),
+            auth_type=ThirdParty.get_domain_num(domain),
         ).add_instance()
         Msg.success_msg('회원가입 완료!')
         return redirect(url_for('views.home'))

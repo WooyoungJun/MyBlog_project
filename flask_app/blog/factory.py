@@ -14,11 +14,19 @@ def create_app(config, mode):
     app.secret_key = config.SECRET_KEYS[f'{mode}_SECRET_KEY']
     app.config['mode'] = mode.upper()
 
+    # app 주입
+    from .api.utils.email import Email
+    from flask import session
+    Email.init_app(app, session)
+    from .api.utils.etc import Etc
+    Etc.init_app(app)
+
     if mode != 'TEST':
         # third-party 관련 환경 변수 셋팅
-        from .api.utils.third_party import set_domain_config, make_auth_url_and_set
-        set_domain_config(app)
-        make_auth_url_and_set(app)
+        from .api.utils.third_party import ThirdParty
+        ThirdParty.init_app(app)
+        ThirdParty.set_domain_config()
+        ThirdParty.make_auth_url_and_set()
 
     # db, migrate init + 테이블 생성
     from .api.models import db_migrate_setup
@@ -30,8 +38,8 @@ def create_app(config, mode):
     # blueprint 등록 코드, url_prefix를 기본으로 함
     add_blueprint(app)
 
-    from .api.utils.error import error_handler_setting
-    error_handler_setting(app)
+    from .api.utils.error import Error
+    Error.error_handler_setting(app)
 
     # jinja2 필터 등록
     app.jinja_env.filters['datetime'] = lambda x: x.strftime('%y.%m.%d %H:%M')
@@ -146,10 +154,10 @@ def set_scheduler(app):
     )
 
     # 쌓인 오류 메세지 삭제
-    from .api.utils.email import delete_error_email
+    from .api.utils.email import Email
     scheduler.add_job(
         id='delete_error_email', 
-        func=delete_error_email,
+        func=Email.delete_error_email,
         args=(app,), 
         trigger=CronTrigger(hour=12),
     )

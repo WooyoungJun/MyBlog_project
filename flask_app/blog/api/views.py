@@ -1,17 +1,9 @@
 from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
-from .utils.decorator import (
-    login_and_admin_required,
-    render_template_with_user, 
-    login_and_create_permission_required,
-)
-from .utils.error import (
-    error,
-)
-from .utils.etc import(
-    Msg, HttpMethod, is_owner, generate_download_urls
-)
+from .utils.etc import Msg, HttpMethod, Etc
+from .utils.decorator import Deco
+from .utils.error import Error
 from .forms import CategoryForm, CommentForm, ContactForm, PostForm
 from .models import get_model
 
@@ -20,7 +12,7 @@ BASE_VIEWS_DIR = 'views/'
 
 def render_template_views(template_name_or_list, **context):
     context['template_name_or_list'] = BASE_VIEWS_DIR + template_name_or_list
-    return render_template_with_user(**context)
+    return Deco.render_template_with_user(**context)
 
 # ------------------------------------------------------------ posts_list 출력 페이지 ------------------------------------------------------------
 @views.route('/')
@@ -39,7 +31,7 @@ def home():
 def user_posts(user_id):
     # 쿼리 최대 4번 = selected_user 1번 + user_posts 2번 + user 1번
     selected_user = get_model('user').get_instance_by_id_with(user_id)
-    if not selected_user: return error(404)
+    if not selected_user: return Error.error(404)
 
     user_posts = get_model('post').get_all_with('category', author_id=user_id)
     return render_template_views(
@@ -53,7 +45,7 @@ def user_posts(user_id):
 def posts_list(category_id):
     # 쿼리 최대 4번 = selected_category 1번 + category_posts 2번 + user 1번
     selected_category = get_model('category').get_instance_by_id_with(category_id)
-    if not selected_category: return error(404)
+    if not selected_category: return Error.error(404)
 
     category_posts = get_model('post').get_all_with('user', 'category', category_id=category_id)
     return render_template_views(
@@ -76,7 +68,7 @@ def category():
     )
 
 @views.route('/category-make', methods=['POST'])
-@login_and_admin_required
+@Deco.login_and_admin_required
 def category_make():
     form = CategoryForm()
 
@@ -89,7 +81,7 @@ def category_make():
     return redirect(url_for('views.category'))
 
 @views.route('/category-delete', methods=['DELETE'])
-@login_and_admin_required
+@Deco.login_and_admin_required
 def category_delete():
     ids = request.json.get('ids', [])
     categories = get_model('category').get_all_by_ids(ids)
@@ -108,7 +100,7 @@ def about_me():
     return render_template_views('about_me.html')
     
 @views.route('/contact', methods=['GET', 'POST'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def contact():
     form = ContactForm()
 
@@ -129,9 +121,9 @@ def post(post_id):
 
     # 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     post = get_model('post').get_instance_by_id_with(post_id, 'user', 'category')
-    if not post: return error(404)
+    if not post: return Error.error(404)
     
-    download_urls = generate_download_urls(post.files.all())
+    download_urls = Etc.generate_download_urls(post.files.all())
     post_comments = get_model('comment').get_all_with('user', post_id=post_id)
     return render_template_views(
         'post_read.html', 
@@ -142,7 +134,7 @@ def post(post_id):
     )
 
 @views.route('/post-create', methods=['GET', 'POST'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def post_create():
     form = PostForm()
 
@@ -161,6 +153,7 @@ def post_create():
         content=form.content.data,
         category_id=form.category_id.data,
         author_id=current_user.id,
+        user=current_user,
     ).add_instance()
 
     files = request.files.getlist('files')
@@ -170,7 +163,7 @@ def post_create():
     return redirect(url_for('views.home'))
 
 @views.route('/post-edit/<int:post_id>', methods=['GET', 'POST'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def post_edit(post_id):
     form = PostForm()
     params = {
@@ -183,8 +176,8 @@ def post_edit(post_id):
     # POST 요청 = 쿼리 최대 3번 = user 1번 + category 1번 + post 추가(user_posts 업데이트) 1번
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     post = get_model('post').get_instance_by_id_with(post_id)
-    if not post: return error(404)
-    if not is_owner(post.author_id): return error(403)
+    if not post: return Error.error(404)
+    if not Etc.is_owner(post.author_id): return Error.error(403)
 
     if HttpMethod.get():
         form.set_form_from_obj(post)
@@ -201,21 +194,21 @@ def post_edit(post_id):
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/post-delete/<int:post_id>', methods=['DELETE'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def post_delete(post_id):
     # 쿼리 최대 4번 = user 1번 + post 삭제 1번 + user의 posts_count update 1번 + comments 삭제 1번
     # + comments 관련 user update N번
     # home 돌아옴 = 쿼리 최대 4번 = posts 3번 + user 1번
     post = get_model('post').get_instance_by_id_with(post_id)
     if not post: return Msg.delete_error()
-    if not is_owner(post.author_id): return Msg.delete_error('권한이 없습니다.', 403)
+    if not Etc.is_owner(post.author_id): return Msg.delete_error('권한이 없습니다.', 403)
 
     post.delete_instance()
     return Msg.delete_success('게시물이 성공적으로 삭제되었습니다')
 
 # ------------------------------------------------------------ comment 관련 기능들 ------------------------------------------------------------
 @views.route('/comment-create/<int:post_id>', methods=['POST'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def comment_create(post_id): 
     form = CommentForm()
 
@@ -226,21 +219,22 @@ def comment_create(post_id):
     get_model('comment')(
         content=form.content.data,
         author_id=current_user.id,
-        post_id=post_id
+        post_id=post_id,
+        user=current_user,
     ).add_instance()
     Msg.success_msg('댓글 작성 성공!')
     return redirect(url_for('views.post', post_id=post_id))
 
 @views.route('/comment-edit/<int:comment_id>', methods=['POST'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def comment_edit(comment_id):
     form = CommentForm()
     
     # POST 요청 = 쿼리 최대 4번 = user 1번 + comment update 1번
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     comment = get_model('comment').get_instance_by_id_with(comment_id)
-    if not comment: return error(404)
-    if not is_owner(comment.author_id): return error(403)
+    if not comment: return Error.error(404)
+    if not Etc.is_owner(comment.author_id): return Error.error(403)
 
     if form.valid():
         comment.update_instance(content=form.content.data)
@@ -250,13 +244,13 @@ def comment_edit(comment_id):
     
 
 @views.route('/comment-delete/<int:comment_id>', methods=['DELETE'])
-@login_and_create_permission_required
+@Deco.login_and_create_permission_required
 def comment_delete(comment_id):
     # POST 요청 = 쿼리 최대 5번 = user 1번 + comment, post 로드 2번 + comment 관련 업데이트(post + user) 2번 
     # post 읽기 돌아옴 = 쿼리 최대 6번 = post 3번 + post_comments 2번 + user 1번
     comment = get_model('comment').get_instance_by_id_with(comment_id)
     if not comment: return Msg.delete_error()
-    if not is_owner(comment.author_id): return Msg.delete_error('권한이 없습니다.', 403)
+    if not Etc.is_owner(comment.author_id): return Msg.delete_error('권한이 없습니다.', 403)
 
     comment.delete_instance()
     return Msg.delete_success('댓글이 성공적으로 삭제되었습니다.')
