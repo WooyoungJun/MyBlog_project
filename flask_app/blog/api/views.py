@@ -161,6 +161,7 @@ def post_create():
         content=form.content.data,
         category_id=form.category_id.data,
         author_id=current_user.id,
+        user=current_user,
     ).add_instance()
 
     files = request.files.getlist('files')
@@ -226,7 +227,8 @@ def comment_create(post_id):
     get_model('comment')(
         content=form.content.data,
         author_id=current_user.id,
-        post_id=post_id
+        post_id=post_id,
+        user=current_user,
     ).add_instance()
     Msg.success_msg('댓글 작성 성공!')
     return redirect(url_for('views.post', post_id=post_id))

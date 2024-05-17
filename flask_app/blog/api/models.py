@@ -291,8 +291,7 @@ class Post(BaseModel):
         self.comments_count = self.post_comments.count()
 
     def before_new_flush(self):
-        user = get_model('user').get_instance_by_id_with(self.author_id)
-        user.posts_count += 1
+        self.user.posts_count += 1
 
     def before_deleted_flush(self):
         self.user.posts_count -= 1
@@ -328,7 +327,7 @@ class File(BaseModel):
             name=new_file_name,
             size=file_size,
             post_id=post_id,
-            author_id=author_id
+            author_id=author_id,
         ).add_instance()
         
         s3.upload_fileobj(file, s3_bucket_name, s3_default_dir + new_file_name)
@@ -371,9 +370,8 @@ class Comment(BaseModel):
     post = db.relationship('Post', back_populates='post_comments')
 
     def before_new_flush(self):
-        user = get_model('user').get_instance_by_id_with(self.author_id)
+        self.user.comments_count += 1
         post = get_model('post').get_instance_by_id_with(self.post_id)
-        user.comments_count += 1
         post.comments_count += 1
 
     def before_deleted_flush(self):
