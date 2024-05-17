@@ -40,11 +40,10 @@ class Etc():
     def init_app(cls, app):
         cls.app = app
         cls.config = app.config
-        cls.KST_offset = timezone(timedelta(hours=9))
     
-    @classmethod
-    def get_korea_time(cls):
-        return datetime.now(cls.KST_offset)
+    @staticmethod
+    def get_korea_time():
+        return datetime.now(timezone(timedelta(hours=9)))
 
     @classmethod
     def get_config(cls):
