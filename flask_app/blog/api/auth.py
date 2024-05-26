@@ -2,12 +2,12 @@ from secrets import token_hex
 from flask import Blueprint, redirect, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 
-from .utils.decorator import Deco
-from .utils.email import Email      
-from .utils.third_party import ThirdParty                                      
-from .utils.etc import Msg, HttpMethod
-from .forms import LoginForm, OtpForm, SignUpForm, UserInfoForm
-from .models import get_model
+from blog.api.utils.decorator import Deco
+from blog.api.utils.email import Email      
+from blog.api.utils.third_party import ThirdParty                                      
+from blog.api.utils.etc import Msg, HttpMethod
+from blog.api.forms import LoginForm, OtpForm, SignUpForm, UserInfoForm
+from blog.api.models.get import get_model
 
 auth = Blueprint('auth', __name__)
 BASE_AUTH_DIR = 'auth/'

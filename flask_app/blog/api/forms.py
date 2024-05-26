@@ -3,8 +3,8 @@ from flask_wtf import FlaskForm
 from wtforms import SelectField, StringField, EmailField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 
-from .utils.etc import Msg
-from .models import get_model
+from blog.api.utils.etc import Msg
+from blog.api.models.category import Category
 
 class BaseForm(FlaskForm):
     def set_form(self, **kwargs):
@@ -42,7 +42,7 @@ class PostForm(BaseForm):
 
     def __init__(self, *args, **kwargs): # 선택 항목 추가
         super(PostForm, self).__init__(*args, **kwargs)
-        self.category_id.choices = [(category.id, category.name) for category in get_model('category').get_all()]
+        self.category_id.choices = [(category.id, category.name) for category in Category.get_all()]
         self.author.data = current_user.username
 
 class CommentForm(BaseForm):
