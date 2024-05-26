@@ -1,6 +1,6 @@
 from flask import abort, redirect, url_for
 
-from .etc import Msg
+from blog.api.utils.etc import Msg
 
 class Error():
     def error(code):

@@ -2,8 +2,8 @@ from flask import redirect, render_template, url_for
 from flask_login import login_required, current_user
 from functools import wraps
 
-from .etc import Msg
-from .error import Error
+from blog.api.utils.etc import Msg
+from blog.api.utils.error import Error
 
 class Deco():
     @staticmethod

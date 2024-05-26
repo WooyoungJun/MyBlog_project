@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 from flask import json, request
 import requests
 
-from .etc import Msg
+from blog.api.utils.etc import Msg
 
 class ThirdParty():
     @classmethod

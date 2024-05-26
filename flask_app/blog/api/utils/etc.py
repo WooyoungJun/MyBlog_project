@@ -34,7 +34,6 @@ class Msg:
         return jsonify(message='error'), code
 
 from datetime import datetime, timedelta, timezone
-from os.path import splitext
 class Etc():
     @classmethod
     def init_app(cls, app):
@@ -48,17 +47,6 @@ class Etc():
     @classmethod
     def get_config(cls):
         return cls.config
-    
-    @classmethod
-    def make_new_file_name(cls, filename, s3_default_dir):
-        origin_file_name, extension = splitext(filename)
-        origin_file_name = origin_file_name.replace(' ', '_')
-        now = str(int(datetime.now().timestamp()*100000))
-        new_file_name = origin_file_name + '_' + now + extension
-        if len(new_file_name) + len(s3_default_dir) > 150: 
-            # 길이 제한 150자
-            new_file_name = new_file_name[-150 + len(s3_default_dir)]
-        return new_file_name
 
     @classmethod
     def generate_download_urls(cls, files):

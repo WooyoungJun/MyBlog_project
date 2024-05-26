@@ -1,11 +1,11 @@
 from flask import Blueprint, url_for, redirect, request
 from flask_login import current_user
 
-from .utils.etc import Msg, HttpMethod, Etc
-from .utils.decorator import Deco
-from .utils.error import Error
-from .forms import CategoryForm, CommentForm, ContactForm, PostForm
-from .models import get_model
+from blog.api.utils.etc import Msg, HttpMethod, Etc
+from blog.api.utils.decorator import Deco
+from blog.api.utils.error import Error
+from blog.api.forms import CategoryForm, CommentForm, ContactForm, PostForm
+from blog.api.models.get import get_model
 
 views = Blueprint('views', __name__)
 BASE_VIEWS_DIR = 'views/'

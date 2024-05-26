@@ -1,7 +1,6 @@
 from flask import Flask
 
-from .api.admin_models import get_all_admin_models
-from .api.models import get_model
+from blog.api.models.get import get_all_admin_models, get_model
 
 def create_app(config, mode):
     '''
@@ -15,21 +14,21 @@ def create_app(config, mode):
     app.config['mode'] = mode.upper()
 
     # app 주입
-    from .api.utils.email import Email
     from flask import session
+    from blog.api.utils.email import Email
     Email.init_app(app, session)
-    from .api.utils.etc import Etc
+    from blog.api.utils.etc import Etc
     Etc.init_app(app)
 
     if mode != 'TEST':
         # third-party 관련 환경 변수 셋팅
-        from .api.utils.third_party import ThirdParty
+        from blog.api.utils.third_party import ThirdParty
         ThirdParty.init_app(app)
         ThirdParty.set_domain_config()
         ThirdParty.make_auth_url_and_set()
 
     # db, migrate init + 테이블 생성
-    from .api.models import db_migrate_setup
+    from blog.api.models import db_migrate_setup
     db_migrate_setup(app)
 
     # admin 페이지에 모델뷰 추가
@@ -38,7 +37,7 @@ def create_app(config, mode):
     # blueprint 등록 코드, url_prefix를 기본으로 함
     add_blueprint(app)
 
-    from .api.utils.error import Error
+    from blog.api.utils.error import Error
     Error.error_handler_setting(app)
 
     # jinja2 필터 등록
@@ -64,16 +63,16 @@ def create_app(config, mode):
 def add_admin_view(app):
     # admin 페이지에 모델뷰 추가
     from flask_admin import Admin
-    from .api.models import get_session
-    from .api.admin_models import CustomAdminIndexView
+    from blog.api.models import get_session
+    from blog.api.models.base import CustomAdminIndexView
     admin = Admin(app, name='MyBlog', template_mode='bootstrap3', index_view=CustomAdminIndexView())
     for admin_model, model in get_all_admin_models():
         admin.add_view(admin_model(model, get_session()))
 
 def add_blueprint(app):
-    from .api.views import views
+    from blog.api.views import views
     app.register_blueprint(views, name='views')
-    from .api.auth import auth
+    from blog.api.auth import auth
     app.register_blueprint(auth, name='auth', url_prefix='/auth')
 
 def set_login_manager(app):
