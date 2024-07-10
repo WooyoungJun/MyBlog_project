@@ -40,6 +40,8 @@
             <div class="col-md-10 col-lg-8 col-xl-7" id="content" name="content">
                 {% if download_urls %}
                     <div id="imageContainer" data-urls="{{ ','.join(download_urls) | safe }}"></div>
+                {% else %}
+                    <div id="imageContainer" data-urls=""></div>
                 {% endif %}
                 <p>{{ post.content }}</p>
             </div>
@@ -54,9 +56,11 @@
             <form class="mb-4" method="post" action="{{ url_for('views.comment_create', post_id=post.id) }}"
             style="padding-bottom: 10px;">
                 {{ form.csrf_token }}
-                <textarea class="form-control mb-3" rows="3" name="content" placeholder="Please leave a comment!"></textarea>
+                <textarea class="form-control mb-3" rows="3" name="content" placeholder="Please leave a comment!"
+                id="commentTextArea" {% if not user.is_authenticated %}disabled{% endif %}></textarea>
                 <div style="text-align: right">
-                    <button class="btn btn-info" id="submitButton" style="width: 150px;height: 45px; font-size: 12px;" type="submit">
+                    <button class="btn btn-info" id="submitButton" style="width: 150px;height: 45px; font-size: 12px;" type="submit"
+                    {% if not user.is_authenticated %}onclick='alert("please login")'{% endif %}>
                         Comment
                     </button>
                 </div>
@@ -151,8 +155,9 @@ function onDeleteComment(button){
 }
 document.addEventListener('DOMContentLoaded', function() {
     const imageContainer = document.getElementById('imageContainer');
-    const download_urls = imageContainer.getAttribute('data-urls').split(',');
-    if (download_urls[0].length == 0){return;}
+    const dataUrls = imageContainer.getAttribute('data-urls');
+    const download_urls = dataUrls ? dataUrls.split(',') : [];
+    if (download_urls.length === 0){return;}
     download_urls.forEach(function(url) {
         fetch(url, {
             headers: {

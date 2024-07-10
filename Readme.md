@@ -35,19 +35,56 @@ ___
 * nginx 컨테이너와 (gunicorn + flask) 컨테이너를 연결해서 함께 배포할 수 있도록 함.
 ---
 
+# 프로젝트 관리
+- config 패키지(폴더)를 통해 개발용(development), 배포용(production), 테스트용(test) 환경 변수를 따로 관리
+- docker-compose.yml, build-deploy.yml 등의 스크립트 파일과 github를 활용해 CI/CD 적용
+- shell script와 python script를 활용해서 각종 배포 전, 후 작업 관리.
+    - container 재시작, db migrate, 배포용 환경 변수 or 파일들 S3 업로드, 다운로드 등
+---
+
+# 코드
+- 객체지향적 코드와 유지보수를 위해, MVC(Model, View, Controller) 디자인 패턴을 최대한 지키며 개발
+    - Model은 flask-sqlalchemy 모델을 통해, View는 templates 폴더에서, Controller는 flask의 view(엔드 포인트) 메소드를 통해 관리했습니다.
+- unittest 모듈을 활용해, 기능 단위 및 통합 테스트 코드를 작성
+- 팩토리 함수를 통해 flask 객체 생성, 파라미터로 config object를 전달하여 개발, 배포, 테스트마다 환경설정이 다르게 되도록 구현
+- BaseModel, AdminBase, BaseForm 등 추상 클래스를 정의하여 공통적으로 사용 할 classmethod, staticmethod, 멤버 함수를 생성
+- 자주 사용하는 메소드, 사용 목적에 맞는 모듈을 생성해서 utils 폴더에서 일괄적으로 관리
+    - 예) Email 전송 - utils/email.py 속 Email 클래스를 사용 Email.send_mail() 메소드 사용
+---
 # 주요 라이브러리
-### Flask-SQLAlchemy
-* ORM(Object Relational Mapping) 라이브러리 = 파이썬 클래스(object)와 DB(Relational) 매핑
+### flask-sqlalchemy 모듈을 활용(ORM 구현체), 모델 스키마 및 메소드를 관리
+- MVC 패턴을 지키기 위해 모델 생성 및 업데이트, 삭제는 모두 각 모델 메소드 call 형태로만 이루어지도록 구현했습니다.
+- 특정 쿼리 실행 시 일대다 관계인 타 모델의 인스턴스 개수만큼 쿼리가 더 발생하는 문제를 해결하기 위해(N+1 문제) sqlalchemy.orm의 selectinload, joinload 메소드를 사용했고, 각각 최대 쿼리 횟수 3번, 1번으로 최적화 했습니다.
+- 특정 객체와 관련된(relationship 객체) 객체를 불러오지 않고 개수를 추적할 수 있도록 구현했습니다. 관련 객체의 개수를 추적하는 필드를 추가하고 sqlalchemy의 event 리스너 데코레이터 함수를 사용해 관련 객체 개수에 변화가 생길때 해당 필드값을 동적으로 변화하도록 구현했습니다.
+    - 예) user의 경우 user_comments 필드를 통해 작성한 댓글 개수를 알 수 있습니다. comment 모델에서 쿼리를 실행해 작성한 댓글 개수를 얻지 않아도 됩니다.
 
-### Flask-wtf
-* Form 데이터 validate 체크 등을 간편하게 할 수 있는 라이브러리
+### flask-admin 모듈을 활용해 관리자 페이지 생성 및 모델 관리
+- 새로운 필드를 추가하면 해당 필드값이 none으로 채워지는 문제가 발생했습니다. 해당 문제를 해결하기 위해 actions(사용자 지정 도구)를 추가해 모델 인스턴스의 값들을 최신화하도록 구현했습니다. → instance.fill_none_fields(): none 값들을 default 값으로 채우도록 구현
 
-### Flask-admin
-* 관리자 페이지를 간편하게 생성하고 관리할 수 있는 라이브러리
+### flask-wtf의 FlaskForm 모듈을 활용해 각종 Form 관리
+- BaseForm 추상 클래스를 정의하여, 모든 FlaskForm에서 공통적으로 사용할 메소드를 정의했습니다.- 각 필드의 validators 설정을 통해 폼 유효성 검사를 간편하게 관리했습니다.
 
-### unittest
-* 테스트 코드 작성을 편리하게 할 수 있는 TestCase 클래스를 제공
+### SMTP(Simple Mail Transfer Protocol) 모듈을 활용해 이메일 인증 시스템 도입
+- 회원 가입시 이메일의 도메인을 따로 검증하지 않고 이메일 인증 시스템을 도입하여, 인증이 완료된 사용자만 컨텐츠 생성을 할 수 있도록 제한했습니다.
+- 이메일 인증 시 클라이언트가 3-5초 기다려야 하는 상황이 발생했습니다. 해당 문제를 해결하기 위해 asyncio 모듈을 활용해 비동기처리를 했습니다.
+- otp 인증 코드를 생성 후 해당 코드와 유효 시간을 session에 저장하여, 유효시간동안(MAIL_LIMIT_TIME)만 인증할 수 있도록 구현했습니다.
 
+### IMAP(Internet Message Access Protocol) 모듈을 활용해 이메일 삭제 도입
+- 이메일의 도메인이 유효하지 않거나, 존재하지 않는 이메일로 otp 인증 이메일이 전송되면, 에러 메세지가 쌓이는 문제가 발생했습니다. 해당 문제를 해결하기 위해 imap를 활용해 쌓인 에러 메세지를 삭제하도록 했습니다.
+
+### boto3 모듈을 활용해 AWS S3 클라이언트를 생성
+- S3 클라이언트를 활용해서 사용자가 이미지를(jpg,jpeg,png,gif) 업로드 할 수 있습니다.
+    - 확장자, 크기 제한은 클라이언트 측 JavsScript로 구현했습니다.
+- 배포용 환경 변수 or 파일들을 업로드, 다운로드 할 수 있도록 구현했습니다.
+
+### APScheduler 모듈을 활용해 스케줄링
+- 매일 0시에는 일일 파일 업로드 할당량 초기화
+- 매일 12시에는 쌓인 오류 이메일 삭제
+
+### OIDC(OpenID Connect)를 활용해 third-party(구글, 카카오) 회원 가입 및 로그인 기능을 구현
+- {domain}_json.json 파일로 client_id, client_secret, redirect_uris, auth_uri, token_uri, scope 등을 관리했습니다.
+- 각 도메인 별 인증 페이지 URL을 생성하고, 해당 URL을 각 도메인 별 로그인/회원가입 버튼에 연결했습니다. 사용자가 버튼을 클릭하면 해당 URL을 통해 Authorization Code를 발급 받고, redirect_url로 연결되어 발급 받은 code로 access token과 id token을 발급받습니다. id token의 페이로드 부분을 urlsafe Base64 디코딩 해주어 사용자 정보를 획득했습니다. 이후 사용자의 email과 name(or nickname)을 활용해 로그인/회원가입을 진행했습니다.
+- OAuth 방식의 경우 access token을 발급받으면 해당 토큰을 저장한 뒤, 해당 토큰을 활용해 사용자 정보를 불러오기 위해 api call을 한번 더 하게 됩니다. OIDC 인증 서비스를 활용하면 추가적인 api call이 필요하지 않아 더욱 빠르고, access token을 관리할 필요 없어 더욱 안정적입니다.
 ---
 # 프로젝트 폴더 구조
 MyBlog_project
